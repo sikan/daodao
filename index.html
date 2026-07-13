@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="岛岛的日记，以日期为线索展开的静态单页。"
+    >
+    <meta
+      name="robots"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta
+      name="googlebot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta
+      name="bingbot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta name="referrer" content="no-referrer">
+    <title>岛岛</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <section class="hero" aria-label="岛岛">
+        <img
+          class="hero__image"
+          src="./assets/hero.jpg"
+          alt="岛岛正在看乐谱"
+          width="2560"
+          height="1708"
+        >
+      </section>
+
+      <div class="order-control" role="group" aria-label="日记排序">
+        <button
+          class="order-control__button is-active"
+          type="button"
+          data-order="asc"
+          aria-pressed="true"
+        >
+          正序
+        </button>
+        <button
+          class="order-control__button"
+          type="button"
+          data-order="desc"
+          aria-pressed="false"
+        >
+          倒序
+        </button>
+      </div>
+
+      <main id="diary" class="diary" data-nosnippet>
+        <section class="entry entry--loading">
+          <div class="entry__meta">
+            <span class="entry__date">daodao</span>
+          </div>
+          <article class="entry__body">
+            <p>正在打开日记。</p>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
