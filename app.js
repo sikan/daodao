@@ -54,6 +54,7 @@ function parseDiary(source) {
 
       current = {
         rawDate: `${marker[1]}${marker[2]}${marker[3]}`,
+        displayDate: `${marker[1]} - ${marker[2]} - ${marker[3]}`,
         year: marker[1],
         month: marker[2],
         day: marker[3],
@@ -109,9 +110,9 @@ function renderEntry(entry, index) {
   const shadeClass = index % 2 === 1 ? " entry--shade" : "";
 
   return `
-    <section class="entry${shadeClass}" aria-label="${entry.rawDate}">
+    <section class="entry${shadeClass}" aria-label="${entry.displayDate}">
       <div class="entry__meta">
-        <time class="entry__date" datetime="${datetime}">${entry.rawDate}</time>
+        <time class="entry__date" datetime="${datetime}">${entry.displayDate}</time>
       </div>
       <article class="entry__body">
         ${title}

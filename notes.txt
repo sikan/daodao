@@ -1,0 +1,36 @@
+Daodao Notes
+
+This is a static diary page intended for GitHub Pages.
+
+Files
+
+- index.html: Page entry point.
+- style.css: Responsive block-based layout and typography.
+- app.js: Loads and parses daodao.txt.
+- daodao.txt: Source diary text. Each entry starts with a standalone YYYYMMDD line.
+- assets/hero.jpg: Header image.
+- assets/fonts/: Self-hosted Noto Serif and Noto Sans Latin font files, distributed with OFL.txt.
+- robots.txt: Requests search engines not to crawl or index the page.
+- .nojekyll: Lets GitHub Pages serve the static files directly.
+
+Typography
+
+The typography is modeled after blog.yitianshijie.net. Latin text uses self-hosted Noto Serif, while Simplified Chinese falls back to a serif CJK system font stack. This keeps Latin text out of CJK font glyphs while preserving a native serif appearance across macOS, iOS, Windows, and Android.
+
+Date display
+
+Diary source markers remain YYYYMMDD for simple parsing. The page displays dates as YYYY - MM - DD.
+
+Privacy boundary
+
+The noindex meta tags and robots.txt are advisory only. Once deployed to GitHub Pages, anyone with the URL can still access the page and daodao.txt.
+
+Local preview
+
+Browsers usually block local file reads for daodao.txt. Start a static server in this directory before previewing:
+
+python3 -m http.server 8000
+
+Then open:
+
+http://localhost:8000/
