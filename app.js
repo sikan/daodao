@@ -85,12 +85,11 @@ function renderParagraph(paragraph) {
     return "";
   }
 
-  const className = lines.some((line) => line.includes("：")) ? "dialogue" : "";
   const content = lines
     .map((line) => `<span class="line">${line || "&nbsp;"}</span>`)
     .join("");
 
-  return `<p${className ? ` class="${className}"` : ""}>${content}</p>`;
+  return `<p>${content}</p>`;
 }
 
 function renderBody(entry) {
