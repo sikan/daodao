@@ -1,17 +1,21 @@
 Daodao Notes
 
-This is a static diary page intended for GitHub Pages.
+This is a static diary page built and published by GitHub Actions.
 
 Files
 
 - index.html: Page entry point.
 - style.css: Responsive block-based layout and typography.
-- app.js: Loads and parses daodao.txt.
-- daodao.txt: Source diary text. Each entry starts with a standalone YYYYMMDD line.
+- app.js: Loads and parses the generated daodao.txt.
+- daodao.master.txt: Unredacted source diary. Each entry starts with a standalone YYYYMMDD line.
+- redactions.json: Literal source-to-public replacement rules.
+- scripts/build-site.mjs: Builds a redacted or raw public site in _site/.
+- .github/workflows/publish.yml: Builds on pushes to main and replaces the public branch.
 - assets/hero.jpg: Header image.
 - assets/fonts/: Self-hosted Noto Serif and Noto Sans Latin font files, distributed with OFL.txt.
 - robots.txt: Requests search engines not to crawl or index the page.
 - .nojekyll: Lets GitHub Pages serve the static files directly.
+- _site/: Ignored local build output. Its generated daodao.txt is not a source file.
 
 Typography
 
@@ -23,13 +27,21 @@ Diary source markers remain YYYYMMDD for simple parsing. The page displays dates
 
 Privacy boundary
 
-The noindex meta tags and robots.txt are advisory only. Once deployed to GitHub Pages, anyone with the URL can still access the page and daodao.txt.
+The noindex meta tags and robots.txt are advisory only. Anyone with the published URL can access the generated daodao.txt. The main branch remains visible to people who deliberately inspect the GitHub repository, but the published public branch contains neither daodao.master.txt nor redactions.json. Selecting raw mode intentionally publishes the unredacted diary as the generated daodao.txt.
 
 Local preview
 
-Browsers usually block local file reads for daodao.txt. Start a static server in this directory before previewing:
+Build the redacted site (the default):
 
-python3 -m http.server 8000
+node scripts/build-site.mjs
+
+To build the raw site instead:
+
+node scripts/build-site.mjs --mode raw
+
+Browsers usually block local file reads. Start a static server for the generated directory:
+
+python3 -m http.server 8000 --directory _site
 
 Then open:
 

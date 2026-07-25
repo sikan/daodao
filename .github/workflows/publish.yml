@@ -1,0 +1,92 @@
+name: Publish website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Publish a redacted or raw diary
+        required: true
+        default: redacted
+        type: choice
+        options:
+          - redacted
+          - raw
+
+concurrency:
+  group: publish-website
+  cancel-in-progress: true
+
+jobs:
+  publish-branch:
+    name: Build and update public branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      public_sha: ${{ steps.publish.outputs.public_sha }}
+    env:
+      PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'redacted' }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Build public website
+        run: >-
+          node scripts/build-site.mjs
+          --mode "$PUBLISH_MODE"
+          --output "$RUNNER_TEMP/site"
+
+      - name: Verify private source files are absent
+        run: |
+          test -f "$RUNNER_TEMP/site/daodao.txt"
+          test ! -e "$RUNNER_TEMP/site/daodao.master.txt"
+          test ! -e "$RUNNER_TEMP/site/redactions.json"
+
+      - name: Publish generated files to public branch
+        id: publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan public
+          git rm -rf --ignore-unmatch .
+          cp -R "$RUNNER_TEMP/site/." .
+          git add --all
+          git commit -m "Publish ${GITHUB_SHA} (${PUBLISH_MODE})"
+          git push --force origin public
+          echo "public_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  deploy-pages:
+    name: Deploy public branch to GitHub Pages
+    needs: publish-branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out generated public commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.publish-branch.outputs.public_sha }}
+
+      - name: Upload public branch for GitHub Pages
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .
+          include-hidden-files: true
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
