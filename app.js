@@ -144,15 +144,16 @@ function getStoredOrder() {
   try {
     const order = window.localStorage.getItem(ORDER_KEY);
 
-    return ORDERS.has(order) ? order : "asc";
+    return order === "asc" ? "asc" : "desc";
   } catch (error) {
-    return "asc";
+    return "desc";
   }
 }
 
 function storeOrder(order) {
   try {
-    window.localStorage.setItem(ORDER_KEY, order);
+    const storedOrder = order === "asc" ? "asc" : "desc";
+    window.localStorage.setItem(ORDER_KEY, storedOrder);
   } catch (error) {
     return;
   }

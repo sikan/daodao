@@ -27,7 +27,7 @@ Diary source markers remain YYYYMMDD for simple parsing. The page displays dates
 
 Browsing modes
 
-The page remembers the selected chronological, reverse-chronological, or random mode. Random mode creates a fresh Fisher-Yates shuffle whenever it is selected or the page is refreshed, and hides the chronological year rail.
+The page opens in reverse-chronological mode by default and remembers chronological or reverse-chronological selections. Random mode creates a fresh Fisher-Yates shuffle whenever it is selected, hides the chronological year rail, and returns to reverse-chronological mode on the next page load.
 
 Privacy boundary
 
