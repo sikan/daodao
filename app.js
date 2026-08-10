@@ -1,5 +1,6 @@
 const SOURCE_URL = "./daodao.txt";
 const ORDER_KEY = "daodao-order";
+const ORDERS = new Set(["asc", "desc", "random"]);
 const DATE_LINE = /^(\d{4})(\d{2})(\d{2})(?:[ \t]+(.+))?$/;
 
 const diaryRoot = document.querySelector("#diary");
@@ -143,7 +144,7 @@ function getStoredOrder() {
   try {
     const order = window.localStorage.getItem(ORDER_KEY);
 
-    return order === "desc" ? "desc" : "asc";
+    return ORDERS.has(order) ? order : "asc";
   } catch (error) {
     return "asc";
   }
@@ -162,6 +163,12 @@ function setOrderControlState(order) {
     const isActive = button.dataset.order === order;
     button.classList.toggle("is-active", isActive);
     button.setAttribute("aria-pressed", String(isActive));
+  });
+}
+
+function setOrderControlsDisabled(isDisabled) {
+  orderButtons.forEach((button) => {
+    button.disabled = isDisabled;
   });
 }
 
@@ -198,6 +205,16 @@ function renderYearRail(entries) {
   if (years.length > 0) {
     setActiveYear(years[0]);
   }
+}
+
+function disableYearRail() {
+  yearRail.hidden = true;
+  setYearRailVisibility(false);
+  yearRailList.replaceChildren();
+  yearTargets = new Map();
+  entryPositions = [];
+  activeYear = null;
+  diaryRoot.style.removeProperty("--diary-end-space");
 }
 
 function setActiveYear(year) {
@@ -299,6 +316,13 @@ function scheduleScrollUpdate() {
 
 function refreshEntryPositions() {
   positionFrame = null;
+
+  if (yearRail.hidden) {
+    entryPositions = [];
+    diaryRoot.style.removeProperty("--diary-end-space");
+    return;
+  }
+
   refreshDiaryEndSpace();
   const pageTop = window.scrollY;
 
@@ -399,17 +423,50 @@ function resetScrub() {
   scrubYear = null;
 }
 
-function renderEntries(order) {
-  const entries =
-    order === "desc" ? [...diaryEntries].reverse() : [...diaryEntries];
+function createShuffledEntries(entries) {
+  const result = [...entries];
 
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[randomIndex]] = [
+      result[randomIndex],
+      result[index],
+    ];
+  }
+
+  return result;
+}
+
+function getEntriesForOrder(order) {
+  if (order === "desc") {
+    return [...diaryEntries].reverse();
+  }
+
+  if (order === "random") {
+    return createShuffledEntries(diaryEntries);
+  }
+
+  return [...diaryEntries];
+}
+
+function renderEntries(order) {
+  const entries = getEntriesForOrder(order);
+
+  diaryRoot.classList.toggle("diary--random", order === "random");
   diaryRoot.innerHTML = entries.map(renderEntry).join("");
   setOrderControlState(order);
-  renderYearRail(entries);
+
+  if (order === "random") {
+    disableYearRail();
+  } else {
+    renderYearRail(entries);
+  }
+
   refreshEntryPositions();
 }
 
 function renderError(message) {
+  setOrderControlsDisabled(true);
   diaryRoot.innerHTML = `
     <section class="entry entry--error">
       <div class="entry__meta">
@@ -441,6 +498,7 @@ async function init() {
     }
 
     renderEntries(getStoredOrder());
+    setOrderControlsDisabled(false);
   } catch (error) {
     renderError(
       "日记暂时没有打开。请通过本地服务器或 GitHub Pages 访问这个页面。"
@@ -450,7 +508,11 @@ async function init() {
 
 orderButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    const order = button.dataset.order === "desc" ? "desc" : "asc";
+    const order = button.dataset.order;
+
+    if (!ORDERS.has(order) || diaryEntries.length === 0) {
+      return;
+    }
 
     storeOrder(order);
     renderEntries(order);

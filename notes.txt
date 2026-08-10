@@ -25,6 +25,10 @@ Date display
 
 Diary source markers remain YYYYMMDD for simple parsing. The page displays dates as YYYY - MM - DD.
 
+Browsing modes
+
+The page remembers the selected chronological, reverse-chronological, or random mode. Random mode creates a fresh Fisher-Yates shuffle whenever it is selected or the page is refreshed, and hides the chronological year rail.
+
 Privacy boundary
 
 The noindex meta tags and robots.txt are advisory only. Anyone with the published URL can access the generated daodao.txt. The main branch remains visible to people who deliberately inspect the GitHub repository, but the published public branch contains neither daodao.master.txt nor redactions.json. Selecting raw mode intentionally publishes the unredacted diary as the generated daodao.txt.

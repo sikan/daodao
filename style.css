@@ -58,6 +58,7 @@
   --page-width: 1280px;
   --measure: 42rem;
   --gutter: clamp(1.5rem, 5vw, 6rem);
+  --year-rail-entry-gutter: 5.25rem;
   --entry-pad-block: 3rem;
   --entry-min-height: 11.5rem;
   --font-serif:
@@ -157,6 +158,11 @@ body {
   color: var(--panel-light);
 }
 
+.order-control__button:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
 .order-control__button:focus-visible {
   outline: 2px solid #7f5830;
   outline-offset: 2px;
@@ -165,6 +171,10 @@ body {
 .diary {
   min-height: 100vh;
   padding-bottom: var(--diary-end-space, 0);
+}
+
+.diary--random {
+  --year-rail-entry-gutter: 0rem;
 }
 
 .year-rail[hidden] {
@@ -275,7 +285,7 @@ body {
   align-items: start;
   min-height: var(--entry-min-height);
   padding: var(--entry-pad-block) var(--gutter);
-  padding-left: max(var(--gutter), 5.25rem);
+  padding-left: max(var(--gutter), var(--year-rail-entry-gutter));
   background: var(--panel-light);
 }
 
@@ -345,12 +355,19 @@ body {
 }
 
 @media (max-width: 760px) {
+  :root {
+    --year-rail-entry-gutter: 4rem;
+  }
+
   .entry {
     grid-template-columns: 1fr;
     row-gap: 1.4rem;
     min-height: auto;
     padding: 2.4rem clamp(1.25rem, 7vw, 2rem);
-    padding-left: max(clamp(1.25rem, 7vw, 2rem), 4rem);
+    padding-left: max(
+      clamp(1.25rem, 7vw, 2rem),
+      var(--year-rail-entry-gutter)
+    );
   }
 
   .order-control {
