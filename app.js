@@ -471,7 +471,7 @@ function renderError(message) {
   diaryRoot.innerHTML = `
     <section class="entry entry--error">
       <div class="entry__meta">
-        <span class="entry__date">daodao</span>
+        <span class="entry__date">An Island in Amber</span>
       </div>
       <article class="entry__body">
         <p>${escapeHtml(message)}</p>
