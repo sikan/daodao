@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="岛岛的琥珀，以日期为线索展开的日记。"
+    >
+    <meta
+      name="robots"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta
+      name="googlebot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta
+      name="bingbot"
+      content="noindex, nofollow, noarchive, nosnippet, noimageindex"
+    >
+    <meta name="referrer" content="no-referrer">
+    <title>岛岛的琥珀</title>
+    <link rel="stylesheet" href="./style.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="site-shell">
+      <section class="hero" aria-label="岛岛的琥珀">
+        <img
+          class="hero__image"
+          src="./assets/hero.jpg"
+          alt="岛岛正在看乐谱"
+          width="2560"
+          height="1708"
+        >
+      </section>
+
+      <div class="order-control" role="group" aria-label="日记排序">
+        <button
+          class="order-control__button is-active"
+          type="button"
+          data-order="desc"
+          aria-pressed="true"
+          disabled
+        >
+          倒序
+        </button>
+        <button
+          class="order-control__button"
+          type="button"
+          data-order="asc"
+          aria-pressed="false"
+          disabled
+        >
+          正序
+        </button>
+        <button
+          class="order-control__button"
+          type="button"
+          data-order="random"
+          aria-pressed="false"
+          aria-label="随机排序；再次点击可重新排列"
+          title="再次点击可重新排列"
+          disabled
+        >
+          随机
+        </button>
+      </div>
+
+      <nav
+        id="yearRail"
+        class="year-rail"
+        aria-label="按年份快速跳转"
+        aria-hidden="true"
+        hidden
+        inert
+      >
+        <ol id="yearRailList" class="year-rail__list"></ol>
+      </nav>
+
+      <main id="diary" class="diary" data-nosnippet>
+        <section class="entry entry--loading">
+          <div class="entry__meta">
+            <span class="entry__date">An Island in Amber</span>
+          </div>
+          <article class="entry__body">
+            <p>正在透射琥珀的温光……</p>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
