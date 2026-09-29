@@ -9,6 +9,7 @@ const repositoryRoot = resolve(scriptDirectory, "..");
 const defaultOutputDirectory = resolve(repositoryRoot, "_site");
 const publicFiles = [
   ".nojekyll",
+  "_headers",
   "index.html",
   "app.js",
   "style.css",

@@ -13,7 +13,8 @@ Files
 - .github/workflows/publish.yml: Builds on pushes to main and replaces the public branch.
 - assets/hero.jpg: Header image.
 - assets/fonts/: Self-hosted Noto Serif and Noto Sans Latin font files, distributed with OFL.txt.
-- robots.txt: Requests search engines not to crawl or index the page.
+- robots.txt: Allows crawlers to read the HTML noindex rule, blocks direct crawling of daodao.txt, and declines search, AI-input, and AI-training use through Content Signals.
+- _headers: Adds X-Robots-Tag noindex directives to every Cloudflare Pages response.
 - .nojekyll: Lets GitHub Pages serve the static files directly.
 - _site/: Ignored local build output. Its generated daodao.txt is not a source file.
 
@@ -31,7 +32,7 @@ The page opens in reverse-chronological mode by default and remembers chronologi
 
 Privacy boundary
 
-The noindex meta tags and robots.txt are advisory only. Anyone with the published URL can access the generated daodao.txt. The main branch remains visible to people who deliberately inspect the GitHub repository, but the published public branch contains neither daodao.master.txt nor redactions.json. Selecting raw mode intentionally publishes the unredacted diary as the generated daodao.txt.
+The HTML meta tags and Cloudflare X-Robots-Tag response header request no indexing, snippets, archives, or image indexing. robots.txt allows crawlers to fetch the HTML and see those rules while blocking direct crawling of daodao.txt; its Content Signal also declines search, AI-input, and AI-training use. These controls are advisory only: anyone with the published URL, or a crawler that ignores the rules, can still access the generated daodao.txt. On the GitHub project-site URL, the repository's robots.txt is below /daodao/ rather than at the origin root, and GitHub Pages does not process Cloudflare's _headers file, so that URL relies mainly on the HTML noindex rule. The main branch remains visible to people who deliberately inspect the GitHub repository, but the published public branch contains neither daodao.master.txt nor redactions.json. Selecting raw mode intentionally publishes the unredacted diary as the generated daodao.txt.
 
 Local preview
 

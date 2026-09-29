@@ -48,8 +48,13 @@ jobs:
       - name: Verify private source files are absent
         run: |
           test -f "$RUNNER_TEMP/site/daodao.txt"
+          test -f "$RUNNER_TEMP/site/_headers"
           test ! -e "$RUNNER_TEMP/site/daodao.master.txt"
           test ! -e "$RUNNER_TEMP/site/redactions.json"
+          grep -Fq "X-Robots-Tag: noindex" "$RUNNER_TEMP/site/_headers"
+          grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$RUNNER_TEMP/site/robots.txt"
+          grep -Fq "Disallow: /daodao.txt" "$RUNNER_TEMP/site/robots.txt"
+          grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$RUNNER_TEMP/site/index.html"
 
       - name: Publish generated files to public branch
         id: publish
