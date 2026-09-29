@@ -5,33 +5,24 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      mode:
-        description: Publish a redacted or raw diary
-        required: true
-        default: redacted
-        type: choice
-        options:
-          - redacted
-          - raw
 
 concurrency:
   group: publish-website
   cancel-in-progress: true
 
 jobs:
-  publish-branch:
-    name: Build and update public branch
+  publish-branches:
+    name: Build and update public and raw branches
     runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
       public_sha: ${{ steps.publish.outputs.public_sha }}
-    env:
-      PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'redacted' }}
     steps:
       - name: Check out main
         uses: actions/checkout@v7
+        with:
+          ref: main
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -39,39 +30,59 @@ jobs:
           node-version: 24
           package-manager-cache: false
 
-      - name: Build public website
+      - name: Build redacted public website
         run: >-
           node scripts/build-site.mjs
-          --mode "$PUBLISH_MODE"
-          --output "$RUNNER_TEMP/site"
+          --mode redacted
+          --output "$RUNNER_TEMP/public-site"
 
-      - name: Verify private source files are absent
+      - name: Build protected raw website
+        run: >-
+          node scripts/build-site.mjs
+          --mode raw
+          --output "$RUNNER_TEMP/raw-site"
+
+      - name: Verify generated websites
         run: |
-          test -f "$RUNNER_TEMP/site/daodao.txt"
-          test -f "$RUNNER_TEMP/site/_headers"
-          test ! -e "$RUNNER_TEMP/site/daodao.master.txt"
-          test ! -e "$RUNNER_TEMP/site/redactions.json"
-          grep -Fq "X-Robots-Tag: noindex" "$RUNNER_TEMP/site/_headers"
-          grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$RUNNER_TEMP/site/robots.txt"
-          grep -Fq "Disallow: /daodao.txt" "$RUNNER_TEMP/site/robots.txt"
-          grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$RUNNER_TEMP/site/index.html"
+          for site in "$RUNNER_TEMP/public-site" "$RUNNER_TEMP/raw-site"; do
+            test -f "$site/daodao.txt"
+            test -f "$site/_headers"
+            test ! -e "$site/daodao.master.txt"
+            test ! -e "$site/redactions.json"
+            grep -Fq "X-Robots-Tag: noindex" "$site/_headers"
+            grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$site/robots.txt"
+            grep -Fq "Disallow: /daodao.txt" "$site/robots.txt"
+            grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$site/index.html"
+          done
 
-      - name: Publish generated files to public branch
+          cmp daodao.master.txt "$RUNNER_TEMP/raw-site/daodao.txt"
+          ! cmp -s daodao.master.txt "$RUNNER_TEMP/public-site/daodao.txt"
+
+      - name: Publish generated files to public and raw branches
         id: publish
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          SOURCE_SHA="$(git rev-parse HEAD)"
+
           git switch --orphan public
           git rm -rf --ignore-unmatch .
-          cp -R "$RUNNER_TEMP/site/." .
+          cp -R "$RUNNER_TEMP/public-site/." .
           git add --all
-          git commit -m "Publish ${GITHUB_SHA} (${PUBLISH_MODE})"
+          git commit -m "Publish ${SOURCE_SHA} (redacted)"
           git push --force origin public
           echo "public_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+          git switch --orphan raw
+          git rm -rf --ignore-unmatch .
+          cp -R "$RUNNER_TEMP/raw-site/." .
+          git add --all
+          git commit -m "Publish ${SOURCE_SHA} (raw)"
+          git push --force origin raw
+
   deploy-pages:
     name: Deploy public branch to GitHub Pages
-    needs: publish-branch
+    needs: publish-branches
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -84,7 +95,7 @@ jobs:
       - name: Check out generated public commit
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.publish-branch.outputs.public_sha }}
+          ref: ${{ needs.publish-branches.outputs.public_sha }}
 
       - name: Upload public branch for GitHub Pages
         uses: actions/upload-pages-artifact@v5
