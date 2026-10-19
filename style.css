@@ -1,4 +1,34 @@
 @font-face {
+  font-family: "Daodao Garamond";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-garamond-roman.woff2?v=a1487ddd96e6")
+    format("woff2");
+  size-adjust: 112%;
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007e,
+    U+00a0-024f,
+    U+1e00-1eff,
+    U+20ac;
+}
+
+@font-face {
+  font-family: "Daodao Ming";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-ming-regular.woff2?v=e3b355ebbe2b")
+    format("woff2");
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+}
+
+@font-face {
   font-family: "Daodao Noto Serif";
   font-style: normal;
   font-weight: 300;
@@ -61,8 +91,9 @@
   --year-rail-entry-gutter: 5.25rem;
   --entry-pad-block: 3rem;
   --entry-min-height: 11.5rem;
-  --font-serif:
-    "Daodao Noto Serif",
+  --font-reading:
+    "Daodao Garamond",
+    "Daodao Ming",
     Georgia,
     "Times New Roman",
     "Songti SC",
@@ -71,6 +102,14 @@
     "Source Han Serif SC",
     SimSun,
     serif;
+  --reading-font-size: 1.125rem;
+  --reading-font-size-mobile: 1.0625rem;
+  --reading-font-size-wide: 1.16rem;
+  --reading-font-weight: 400;
+  --reading-line-height: 1.78;
+  --date-font-weight: 400;
+  --empty-note-font-style: normal;
+  --empty-note-letter-spacing: 0.02em;
   --font-ui:
     "Daodao Noto Sans",
     -apple-system,
@@ -82,6 +121,23 @@
     sans-serif;
 }
 
+html[data-typography="noto-system"] {
+  --font-reading:
+    "Daodao Noto Serif",
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "STSong",
+    "Noto Serif CJK SC",
+    "Source Han Serif SC",
+    SimSun,
+    serif;
+  --reading-font-weight: 300;
+  --date-font-weight: 300;
+  --empty-note-font-style: italic;
+  --empty-note-letter-spacing: normal;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -89,11 +145,12 @@
 html {
   background: var(--outside);
   color: var(--ink);
-  font-family: var(--font-serif);
+  font-family: var(--font-reading);
   font-size: 100%;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-weight: var(--reading-font-weight);
+  font-kerning: normal;
+  font-synthesis: none;
+  font-variant-ligatures: common-ligatures contextual;
 }
 
 body {
@@ -302,22 +359,24 @@ body {
 .entry__date {
   display: inline-block;
   color: inherit;
-  font-family: var(--font-serif);
+  font-family: var(--font-reading);
   font-size: 0.92rem;
-  font-weight: 300;
+  font-weight: var(--date-font-weight);
   line-height: 1.35;
 }
 
 .entry__body {
   width: min(100%, var(--measure));
   color: inherit;
+  line-break: strict;
+  overflow-wrap: break-word;
 }
 
 .entry__body p {
   margin: 0 0 1.35em;
-  font-size: 1.125rem;
-  font-weight: 300;
-  line-height: 1.78;
+  font-size: var(--reading-font-size);
+  font-weight: var(--reading-font-weight);
+  line-height: var(--reading-line-height);
 }
 
 .entry__body p:last-child {
@@ -337,7 +396,8 @@ body {
 
 .entry__body .empty-note {
   color: var(--muted);
-  font-style: italic;
+  font-style: var(--empty-note-font-style);
+  letter-spacing: var(--empty-note-letter-spacing);
 }
 
 .entry--loading,
@@ -406,8 +466,8 @@ body {
   }
 
   .entry__body p {
-    font-size: 1.0625rem;
-    line-height: 1.78;
+    font-size: var(--reading-font-size-mobile);
+    line-height: var(--reading-line-height);
   }
 }
 
@@ -418,7 +478,7 @@ body {
   }
 
   .entry__body p {
-    font-size: 1.16rem;
+    font-size: var(--reading-font-size-wide);
   }
 }
 

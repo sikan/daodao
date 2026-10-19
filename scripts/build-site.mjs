@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,9 +12,29 @@ const publicFiles = [
   ".nojekyll",
   "_headers",
   "index.html",
+  "typography.js",
   "app.js",
   "style.css",
   "robots.txt",
+];
+const fontManifestPath = resolve(
+  repositoryRoot,
+  "scripts",
+  "font-subset-manifest.json"
+);
+const fontDirectory = resolve(repositoryRoot, "assets", "fonts");
+const mingUnicodeRanges = [
+  [0x2000, 0x206f],
+  [0x2e80, 0x33ff],
+  [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff],
+  [0xf900, 0xfaff],
+  [0xfe10, 0xfe1f],
+  [0xfe30, 0xfe4f],
+  [0xff00, 0xffef],
+  [0x20000, 0x2fa1f],
+  [0x2ebf0, 0x2ee5f],
+  [0x30000, 0x323af],
 ];
 
 function parseOptions(argumentsList) {
@@ -91,6 +112,137 @@ function validateOutputDirectory(outputDirectory) {
 
 function characterLength(value) {
   return Array.from(value).length;
+}
+
+function isMingCodepoint(codepoint) {
+  return mingUnicodeRanges.some(
+    ([rangeStart, rangeEnd]) =>
+      codepoint >= rangeStart && codepoint <= rangeEnd
+  );
+}
+
+function sha256(contents) {
+  return createHash("sha256").update(contents).digest("hex");
+}
+
+function resolveFontAsset(relativeFontPath) {
+  const fontPath = resolve(repositoryRoot, relativeFontPath);
+
+  if (!isInside(fontDirectory, fontPath)) {
+    throw new Error(`Font reference escapes assets/fonts: ${relativeFontPath}`);
+  }
+
+  return fontPath;
+}
+
+async function validateFontAssets() {
+  const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
+
+  if (
+    manifest.version !== 1 ||
+    !Array.isArray(manifest.textSources) ||
+    !Array.isArray(manifest.mingCodepoints) ||
+    !manifest.fonts?.ming ||
+    !manifest.fonts?.garamond
+  ) {
+    throw new Error("Invalid scripts/font-subset-manifest.json");
+  }
+
+  const sourceText = (
+    await Promise.all(
+      manifest.textSources.map((sourcePath) =>
+        readFile(resolve(repositoryRoot, sourcePath), "utf8")
+      )
+    )
+  ).join("");
+  const includedCodepoints = new Set(
+    manifest.mingCodepoints.map((label) => Number.parseInt(label.slice(2), 16))
+  );
+  const missingCodepoints = [
+    ...new Set(
+      Array.from(sourceText, (character) => character.codePointAt(0)).filter(
+        (codepoint) =>
+          isMingCodepoint(codepoint) && !includedCodepoints.has(codepoint)
+      )
+    ),
+  ].sort((left, right) => left - right);
+
+  if (missingCodepoints.length > 0) {
+    const labels = missingCodepoints
+      .slice(0, 12)
+      .map((codepoint) => `U+${codepoint.toString(16).toUpperCase()}`)
+      .join(", ");
+    throw new Error(
+      `The reading-font subset is stale (${labels}). ` +
+        "Run scripts/build-fonts.py before publishing."
+    );
+  }
+
+  const fontReferenceSources = await Promise.all(
+    ["typography.js", "style.css"].map(async (sourcePath) => ({
+      sourcePath,
+      contents: await readFile(resolve(repositoryRoot, sourcePath), "utf8"),
+    }))
+  );
+
+  for (const font of Object.values(manifest.fonts)) {
+    const fontPath = resolveFontAsset(font.file);
+    const contents = await readFile(fontPath);
+
+    if (contents.byteLength !== font.bytes || sha256(contents) !== font.sha256) {
+      throw new Error(
+        `Font asset does not match its manifest: ${font.file}. ` +
+          "Run scripts/build-fonts.py before publishing."
+      );
+    }
+
+    const filename = font.file.split("/").at(-1);
+    const versionedReference = `${filename}?v=${font.sha256.slice(0, 12)}`;
+
+    for (const source of fontReferenceSources) {
+      if (!source.contents.includes(versionedReference)) {
+        throw new Error(
+          `${source.sourcePath} is missing ${versionedReference}. ` +
+            "Run scripts/build-fonts.py before publishing."
+        );
+      }
+    }
+  }
+
+  const stylesheet = fontReferenceSources.find(
+    (source) => source.sourcePath === "style.css"
+  ).contents;
+  const typographyScript = fontReferenceSources.find(
+    (source) => source.sourcePath === "typography.js"
+  ).contents;
+  const stylesheetFontMatches = stylesheet.matchAll(
+    /url\(["']?(\.\/assets\/fonts\/[^"'?]+\.(?:ttf|woff2))/g
+  );
+  const stylesheetFontPaths = new Set(
+    [...stylesheetFontMatches].map((match) => match[1])
+  );
+  const preloadFontMatches = typographyScript.matchAll(
+    /href:\s*["'](\.\/assets\/fonts\/[^"'?]+\.(?:ttf|woff2))/g
+  );
+  const preloadFontPaths = new Set(
+    [...preloadFontMatches].map((match) => match[1])
+  );
+
+  if (stylesheetFontPaths.size === 0 || preloadFontPaths.size === 0) {
+    throw new Error("No typography font assets were found to validate");
+  }
+
+  for (const relativeFontPath of stylesheetFontPaths) {
+    await readFile(resolveFontAsset(relativeFontPath));
+  }
+
+  for (const preloadFontPath of preloadFontPaths) {
+    if (!stylesheetFontPaths.has(preloadFontPath)) {
+      throw new Error(
+        `Preloaded font has no matching @font-face: ${preloadFontPath}`
+      );
+    }
+  }
 }
 
 function validateRedactionConfig(config) {
@@ -195,6 +347,7 @@ async function build() {
   const outputDirectory = resolve(options.output);
 
   validateOutputDirectory(outputDirectory);
+  await validateFontAssets();
   await rm(outputDirectory, { recursive: true, force: true });
   await copyPublicFiles(outputDirectory);
 

@@ -5,6 +5,7 @@ This is a static diary page built and published by GitHub Actions.
 Files
 
 - index.html: Page entry point.
+- typography.js: Selects the default typography scheme, applies URL overrides, and preloads only the active scheme.
 - style.css: Responsive block-based layout and typography.
 - app.js: Loads and parses the generated daodao.txt.
 - daodao.master.txt: Unredacted source diary. Each entry starts with a standalone YYYYMMDD line.
@@ -12,7 +13,7 @@ Files
 - scripts/build-site.mjs: Builds a redacted or raw public site in _site/.
 - .github/workflows/publish.yml: Builds on pushes to main and replaces the public branch.
 - assets/hero.jpg: Header image.
-- assets/fonts/: Self-hosted Noto Serif and Noto Sans Latin font files, distributed with OFL.txt.
+- assets/fonts/: Self-hosted subsetted reading fonts, legacy Noto Serif fonts, the Noto Sans UI font, and their licenses.
 - robots.txt: Allows crawlers to read the HTML noindex rule, blocks direct crawling of daodao.txt, and declines search, AI-input, and AI-training use through Content Signals.
 - _headers: Adds X-Robots-Tag noindex directives to every Cloudflare Pages response.
 - .nojekyll: Lets GitHub Pages serve the static files directly.
@@ -20,7 +21,11 @@ Files
 
 Typography
 
-The typography is modeled after blog.yitianshijie.net. Latin text uses self-hosted Noto Serif, while Simplified Chinese falls back to a serif CJK system font stack. This keeps Latin text out of CJK font glyphs while preserving a native serif appearance across macOS, iOS, Windows, and Android.
+The default `iming-garamond` scheme uses self-hosted EB Garamond for Latin characters and a content-specific I.MingCP-derived subset for Chinese, East Asian characters, and Chinese punctuation. The I.MingCP derivative is internally renamed Daodao Ming as required by the IPA Font License. The fonts are preloaded as WOFF2 resources, use aligned vertical metrics, and do not depend on platform-installed CJK fonts, which keeps the intended serif treatment consistent across Windows, macOS, and iOS.
+
+The alternate `noto-system` scheme preserves the previous design: self-hosted Noto Serif for Latin text and platform serif fallbacks for Chinese. Change `DEFAULT_TYPOGRAPHY` in typography.js to switch the site-wide default in one place. For temporary comparisons, append `?typography=iming-garamond` or `?typography=noto-system` to the page URL. Only fonts required by the active scheme are preloaded. UI controls continue to use the self-hosted Noto Sans Latin font with native sans-serif CJK fallbacks.
+
+The site build validates both font-file hashes and the Chinese glyph manifest before publishing. When diary text or interface copy introduces a new CJK character, regenerate the subsets as documented in assets/fonts/README.md.
 
 Date display
 

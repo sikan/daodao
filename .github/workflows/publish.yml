@@ -47,12 +47,17 @@ jobs:
           for site in "$RUNNER_TEMP/public-site" "$RUNNER_TEMP/raw-site"; do
             test -f "$site/daodao.txt"
             test -f "$site/_headers"
+            test -f "$site/typography.js"
+            test -f "$site/assets/fonts/daodao-garamond-roman.woff2"
+            test -f "$site/assets/fonts/daodao-ming-regular.woff2"
+            test -f "$site/assets/fonts/noto-serif-300.ttf"
             test ! -e "$site/daodao.master.txt"
             test ! -e "$site/redactions.json"
             grep -Fq "X-Robots-Tag: noindex" "$site/_headers"
             grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$site/robots.txt"
             grep -Fq "Disallow: /daodao.txt" "$site/robots.txt"
             grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$site/index.html"
+            grep -Fq '<script src="./typography.js"></script>' "$site/index.html"
           done
 
           cmp daodao.master.txt "$RUNNER_TEMP/raw-site/daodao.txt"
