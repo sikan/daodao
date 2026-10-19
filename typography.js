@@ -37,8 +37,11 @@
   const activeTypography = hasRequestedTypography
     ? requestedTypography
     : DEFAULT_TYPOGRAPHY;
+  const platform = navigator.userAgentData?.platform || navigator.platform || "";
+  const isApplePlatform = /^(Mac|iPhone|iPad|iPod)/.test(platform);
 
   document.documentElement.dataset.typography = activeTypography;
+  document.documentElement.dataset.applePlatform = String(isApplePlatform);
 
   for (const font of TYPOGRAPHY_SCHEMES[activeTypography].preloads) {
     const preload = document.createElement("link");

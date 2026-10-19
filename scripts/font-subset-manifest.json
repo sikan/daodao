@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "textSources": [
     "daodao.master.txt",
     "redactions.json",
@@ -7,7 +7,7 @@
     "app.js",
     "typography.js"
   ],
-  "mingCodepoints": [
+  "cjkCodepoints": [
     "U+2013",
     "U+2014",
     "U+2018",
@@ -2882,6 +2882,14 @@
       "sha256": "a1487ddd96e635fcbe6c6010cb078aebc27b6f37a74faa6de84e9f74a50706b3",
       "bytes": 76804,
       "sourceSha256": "ef9512f92f6d579e5dc75af59a5a4b1b8b47d2eda89e00b954d44520e5369027"
+    },
+    "notoSerifCjk": {
+      "family": "Daodao Noto Serif SC",
+      "file": "assets/fonts/daodao-noto-serif-sc-light.woff2",
+      "sha256": "9baf8fb0c7ce3b064920c781d97712644d6cceee5e210a323ffa81fd29826e35",
+      "bytes": 1300036,
+      "sourceSha256": "7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c",
+      "glyphCodepoints": 2858
     }
   }
 }

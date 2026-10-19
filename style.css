@@ -37,6 +37,25 @@
 }
 
 @font-face {
+  font-family: "Daodao Songti SC";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src:
+    local("Songti SC Light"),
+    local("STSongti-SC-Light");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif SC";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=9baf8fb0c7ce")
+    format("woff2");
+}
+
+@font-face {
   font-family: "Daodao Noto Serif";
   font-style: normal;
   font-weight: 400;
@@ -80,6 +99,8 @@
   color-scheme: light;
   --ink: #32261a;
   --muted: rgba(50, 38, 26, 0.68);
+  --reading-ink: rgba(50, 38, 26, 0.68);
+  --reading-muted: rgba(50, 38, 26, 0.48);
   --outside: #e9e6e1;
   --paper: #f3efe8;
   --panel-light: #f3efe8;
@@ -124,18 +145,30 @@
 html[data-typography="noto-system"] {
   --font-reading:
     "Daodao Noto Serif",
+    "Daodao Songti SC",
     Georgia,
     "Times New Roman",
     "Songti SC",
     "STSong",
+    "Daodao Noto Serif SC",
     "Noto Serif CJK SC",
     "Source Han Serif SC",
     SimSun,
     serif;
   --reading-font-weight: 300;
+  --reading-ink: rgba(50, 38, 26, 0.68);
+  --reading-muted: rgba(50, 38, 26, 0.46);
   --date-font-weight: 300;
   --empty-note-font-style: italic;
   --empty-note-letter-spacing: normal;
+}
+
+html[data-typography="noto-system"][data-apple-platform="true"] {
+  --reading-ink: var(--ink);
+  --reading-muted: var(--muted);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -358,7 +391,7 @@ body {
 
 .entry__date {
   display: inline-block;
-  color: inherit;
+  color: var(--reading-ink);
   font-family: var(--font-reading);
   font-size: 0.92rem;
   font-weight: var(--date-font-weight);
@@ -367,7 +400,7 @@ body {
 
 .entry__body {
   width: min(100%, var(--measure));
-  color: inherit;
+  color: var(--reading-ink);
   line-break: strict;
   overflow-wrap: break-word;
 }
@@ -387,7 +420,7 @@ body {
   margin: 2rem 0;
   padding: 0 0 0 1.25rem;
   border-left: 1px solid currentColor;
-  color: var(--muted);
+  color: var(--reading-muted);
 }
 
 .entry__body .line {
@@ -395,7 +428,7 @@ body {
 }
 
 .entry__body .empty-note {
-  color: var(--muted);
+  color: var(--reading-muted);
   font-style: var(--empty-note-font-style);
   letter-spacing: var(--empty-note-letter-spacing);
 }

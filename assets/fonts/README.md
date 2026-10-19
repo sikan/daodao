@@ -1,10 +1,10 @@
 # Font assets
 
-The site self-hosts its fonts so the default reading experience does not
-depend on fonts installed by Windows, macOS, or iOS. The default scheme uses
-the two content-specific WOFF2 subsets in this directory. Their much larger
-upstream I.MingCP and EB Garamond source files are intentionally not committed;
-the alternate legacy scheme retains the site's existing Noto Serif TTF files.
+The site self-hosts its fonts so the reading experience does not depend on
+fonts installed by Windows, macOS, or iOS. The typography schemes use
+content-specific WOFF2 subsets in this directory. Their much larger upstream
+I.MingCP, EB Garamond, and Noto Serif CJK source files are intentionally not
+committed.
 
 ## Reading fonts
 
@@ -61,9 +61,32 @@ and year rail. It is covered by `OFL.txt` (Noto Project Authors, OFL 1.1).
 ## Legacy reading fonts
 
 The five `noto-serif-*.ttf` files preserve the site's earlier Latin reading
-family for the `noto-system` typography scheme. Chinese characters in that
-scheme continue through the platform serif fallback stack. These files are
-also covered by `OFL.txt`.
+family for the `noto-system` typography scheme. These files are covered by
+`OFL.txt`.
+
+### Daodao Noto Serif SC Light
+
+`daodao-noto-serif-sc-light.woff2` is a content-specific Chinese subset of
+Noto Serif CJK SC 2.003 Light. It supplies the CJK glyphs missing from the
+legacy Latin-only Noto Serif files, so the alternate scheme remains serif on
+iOS and other platforms without relying on locally installed fonts.
+
+- Upstream project: <https://github.com/notofonts/noto-cjk>
+- Version: Noto Serif CJK 2.003
+- Pinned source commit: `f8d157532fbfaeda587e826d4cd5b21a49186f7c`
+- Original file: `Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Light.otf`
+- Pinned download: <https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Serif/OTF/SimplifiedChinese/NotoSerifCJKsc-Light.otf>
+- Original SHA-256: `7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c`
+- License: `OFL.txt`
+
+The subset uses the distinct internal family name `Daodao Noto Serif SC` and
+PostScript name `DaodaoNotoSerifSC-Light`.
+
+The alternate typography scheme first asks Apple platforms for their locally
+installed `Songti SC Light` (`STSongti-SC-Light`) to reproduce the original
+macOS rendering without redistributing an Apple system font. This self-hosted
+Noto Serif CJK subset remains the serif fallback for platforms where Songti SC
+is unavailable; that fallback retains its own lighter ink compensation.
 
 ## Rebuilding the subsets
 
@@ -73,18 +96,20 @@ Install the pinned tooling in an isolated Python environment:
 python -m pip install -r scripts/requirements-fonts.txt
 ```
 
-Download the two pinned source files above, then run from the repository root:
+Download the three pinned source files above, then run from the repository
+root:
 
 ```sh
 python scripts/build-fonts.py \
   --iming /path/to/I.MingCP-8.10.ttf \
-  --garamond '/path/to/EBGaramond[wght].ttf'
+  --garamond '/path/to/EBGaramond[wght].ttf' \
+  --noto-serif-cjk /path/to/NotoSerifCJKsc-Light.otf
 ```
 
 The script validates the upstream source hashes, renames the derived fonts,
 writes deterministic WOFF2 subsets, and updates
-`scripts/font-subset-manifest.json`. It also updates the content-hash query
-strings in `typography.js` and `style.css`, preventing stale browser caches
-after a subset changes. The normal site build checks the manifest against all
-diary and interface text and fails if a newly introduced CJK character is
-absent.
+`scripts/font-subset-manifest.json`. Font files are staged first, and every
+expected reference is validated before the generated files, manifest, or
+content-hash query strings are replaced. The normal site build checks the
+manifest against all diary and interface text and fails if a newly introduced
+CJK character is absent.

@@ -3,7 +3,7 @@
 
 The I.MingCP subset is a Derived Program under the IPA Font License. Its
 internal family and file names are therefore changed to "Daodao Ming". See
-assets/fonts/README.md for source provenance and replacement instructions.
+assets/fonts/README.md for source provenance and licensing details.
 """
 
 from __future__ import annotations
@@ -11,7 +11,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import stat
+import tempfile
 from pathlib import Path
 from typing import Iterable
 
@@ -27,11 +30,24 @@ TEXT_SOURCES = (
     "app.js",
     "typography.js",
 )
-MING_SEED = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝"
+CJK_SEED = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝"
 
 SOURCE_HASHES = {
     "iming": "1c411a2e97b65c26aaa01707bbe06919569fcd7683c8bb5db114a96264710458",
     "garamond": "ef9512f92f6d579e5dc75af59a5a4b1b8b47d2eda89e00b954d44520e5369027",
+    "noto_serif_cjk": "7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c",
+}
+
+FONT_REVISION_TARGETS = {
+    "typography.js": (
+        "daodao-garamond-roman.woff2",
+        "daodao-ming-regular.woff2",
+    ),
+    "style.css": (
+        "daodao-garamond-roman.woff2",
+        "daodao-ming-regular.woff2",
+        "daodao-noto-serif-sc-light.woff2",
+    ),
 }
 
 LATIN_RANGES = (
@@ -41,7 +57,7 @@ LATIN_RANGES = (
     (0x20AC, 0x20AC),
 )
 
-MING_RANGES = (
+CJK_RANGES = (
     (0x2000, 0x206F),  # General punctuation, kept out of EB Garamond.
     (0x2E80, 0x33FF),  # CJK radicals, punctuation, kana and compatibility.
     (0x3400, 0x4DBF),  # CJK Unified Ideographs Extension A.
@@ -60,6 +76,7 @@ def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--iming", required=True, type=Path)
     parser.add_argument("--garamond", required=True, type=Path)
+    parser.add_argument("--noto-serif-cjk", required=True, type=Path)
     parser.add_argument(
         "--output",
         type=Path,
@@ -111,8 +128,8 @@ def is_in_ranges(codepoint: int, ranges: Iterable[tuple[int, int]]) -> bool:
     return any(start <= codepoint <= end for start, end in ranges)
 
 
-def collect_ming_codepoints() -> set[int]:
-    text = MING_SEED + "".join(
+def collect_cjk_codepoints() -> set[int]:
+    text = CJK_SEED + "".join(
         (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
         for relative_path in TEXT_SOURCES
     )
@@ -120,7 +137,7 @@ def collect_ming_codepoints() -> set[int]:
     return {
         ord(character)
         for character in text
-        if is_in_ranges(ord(character), MING_RANGES)
+        if is_in_ranges(ord(character), CJK_RANGES)
     }
 
 
@@ -168,6 +185,7 @@ def build_subset(
     family: str,
     full_name: str,
     postscript_name: str,
+    subfamily: str = "Regular",
 ) -> set[int]:
     font = TTFont(source, recalcTimestamp=False)
     available = unicode_cmap(font)
@@ -202,7 +220,7 @@ def build_subset(
     replace_names(
         font,
         family=family,
-        subfamily="Regular",
+        subfamily=subfamily,
         full_name=full_name,
         postscript_name=postscript_name,
     )
@@ -217,12 +235,24 @@ def relative_to_repository(path: Path) -> str:
     return path.resolve().relative_to(REPOSITORY_ROOT).as_posix()
 
 
-def update_font_revisions(font_hashes: dict[str, str]) -> None:
-    for relative_path in ("typography.js", "style.css"):
+def prepare_font_revision_updates(
+    font_hashes: dict[str, str],
+) -> dict[Path, str]:
+    updates = {}
+    referenced_fonts = set()
+
+    for relative_path, filenames in FONT_REVISION_TARGETS.items():
         path = REPOSITORY_ROOT / relative_path
         contents = path.read_text(encoding="utf-8")
 
-        for filename, font_hash in font_hashes.items():
+        for filename in filenames:
+            if filename not in font_hashes:
+                raise ValueError(
+                    f"Missing generated hash for {filename} referenced by {relative_path}"
+                )
+
+            referenced_fonts.add(filename)
+            font_hash = font_hashes[filename]
             pattern = re.compile(rf"{re.escape(filename)}(?:\?v=[0-9a-f]+)?")
             contents, replacement_count = pattern.subn(
                 f"{filename}?v={font_hash[:12]}",
@@ -232,7 +262,38 @@ def update_font_revisions(font_hashes: dict[str, str]) -> None:
             if replacement_count == 0:
                 raise ValueError(f"Missing {filename} reference in {relative_path}")
 
-        path.write_text(contents, encoding="utf-8")
+        updates[path] = contents
+
+    unreferenced_fonts = set(font_hashes) - referenced_fonts
+
+    if unreferenced_fonts:
+        filenames = ", ".join(sorted(unreferenced_fonts))
+        raise ValueError(f"No revision targets configured for: {filenames}")
+
+    return updates
+
+
+def write_text_atomically(path: Path, contents: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
+
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        delete=False,
+    ) as temporary_file:
+        temporary_file.write(contents)
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+        temporary_path = Path(temporary_file.name)
+
+    try:
+        temporary_path.chmod(mode)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def main() -> None:
@@ -248,8 +309,13 @@ def main() -> None:
         "garamond",
         arguments.accept_different_sources,
     )
+    noto_serif_cjk_source_hash = validate_source(
+        arguments.noto_serif_cjk,
+        "noto_serif_cjk",
+        arguments.accept_different_sources,
+    )
 
-    ming_codepoints = collect_ming_codepoints()
+    cjk_codepoints = collect_cjk_codepoints()
     garamond_source = TTFont(arguments.garamond, recalcTimestamp=False)
     garamond_codepoints = unicode_cmap(garamond_source) & codepoints_in_ranges(
         LATIN_RANGES
@@ -258,68 +324,118 @@ def main() -> None:
 
     ming_output = output_directory / "daodao-ming-regular.woff2"
     garamond_output = output_directory / "daodao-garamond-roman.woff2"
-
-    built_ming_codepoints = build_subset(
-        arguments.iming,
-        ming_output,
-        ming_codepoints,
-        family="Daodao Ming",
-        full_name="Daodao Ming Regular",
-        postscript_name="DaodaoMing-Regular",
-    )
-    build_subset(
-        arguments.garamond,
-        garamond_output,
-        garamond_codepoints,
-        family="Daodao Garamond",
-        full_name="Daodao Garamond Regular",
-        postscript_name="DaodaoGaramond-Regular",
+    noto_serif_cjk_output = (
+        output_directory / "daodao-noto-serif-sc-light.woff2"
     )
 
-    ming_hash = sha256(ming_output)
-    garamond_hash = sha256(garamond_output)
-    manifest = {
-        "version": 1,
-        "textSources": list(TEXT_SOURCES),
-        "mingCodepoints": [
-            f"U+{codepoint:04X}" for codepoint in sorted(ming_codepoints)
-        ],
-        "fonts": {
-            "ming": {
-                "family": "Daodao Ming",
-                "file": relative_to_repository(ming_output),
-                "sha256": ming_hash,
-                "bytes": ming_output.stat().st_size,
-                "sourceSha256": iming_source_hash,
-                "glyphCodepoints": len(built_ming_codepoints),
-            },
-            "garamond": {
-                "family": "Daodao Garamond",
-                "file": relative_to_repository(garamond_output),
-                "sha256": garamond_hash,
-                "bytes": garamond_output.stat().st_size,
-                "sourceSha256": garamond_source_hash,
-            },
-        },
-    }
-    manifest_path = REPOSITORY_ROOT / "scripts" / "font-subset-manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    update_font_revisions(
-        {
+    output_directory.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(
+        prefix=".daodao-font-build-",
+        dir=output_directory.parent,
+    ) as staging_directory_name:
+        staging_directory = Path(staging_directory_name)
+        staged_ming_output = staging_directory / ming_output.name
+        staged_garamond_output = staging_directory / garamond_output.name
+        staged_noto_serif_cjk_output = (
+            staging_directory / noto_serif_cjk_output.name
+        )
+
+        built_ming_codepoints = build_subset(
+            arguments.iming,
+            staged_ming_output,
+            cjk_codepoints,
+            family="Daodao Ming",
+            full_name="Daodao Ming Regular",
+            postscript_name="DaodaoMing-Regular",
+        )
+        build_subset(
+            arguments.garamond,
+            staged_garamond_output,
+            garamond_codepoints,
+            family="Daodao Garamond",
+            full_name="Daodao Garamond Regular",
+            postscript_name="DaodaoGaramond-Regular",
+        )
+        built_noto_serif_cjk_codepoints = build_subset(
+            arguments.noto_serif_cjk,
+            staged_noto_serif_cjk_output,
+            cjk_codepoints,
+            family="Daodao Noto Serif SC",
+            subfamily="Light",
+            full_name="Daodao Noto Serif SC Light",
+            postscript_name="DaodaoNotoSerifSC-Light",
+        )
+
+        ming_hash = sha256(staged_ming_output)
+        garamond_hash = sha256(staged_garamond_output)
+        noto_serif_cjk_hash = sha256(staged_noto_serif_cjk_output)
+        font_hashes = {
             ming_output.name: ming_hash,
             garamond_output.name: garamond_hash,
+            noto_serif_cjk_output.name: noto_serif_cjk_hash,
         }
-    )
+        revision_updates = prepare_font_revision_updates(font_hashes)
+        manifest = {
+            "version": 2,
+            "textSources": list(TEXT_SOURCES),
+            "cjkCodepoints": [
+                f"U+{codepoint:04X}" for codepoint in sorted(cjk_codepoints)
+            ],
+            "fonts": {
+                "ming": {
+                    "family": "Daodao Ming",
+                    "file": relative_to_repository(ming_output),
+                    "sha256": ming_hash,
+                    "bytes": staged_ming_output.stat().st_size,
+                    "sourceSha256": iming_source_hash,
+                    "glyphCodepoints": len(built_ming_codepoints),
+                },
+                "garamond": {
+                    "family": "Daodao Garamond",
+                    "file": relative_to_repository(garamond_output),
+                    "sha256": garamond_hash,
+                    "bytes": staged_garamond_output.stat().st_size,
+                    "sourceSha256": garamond_source_hash,
+                },
+                "notoSerifCjk": {
+                    "family": "Daodao Noto Serif SC",
+                    "file": relative_to_repository(noto_serif_cjk_output),
+                    "sha256": noto_serif_cjk_hash,
+                    "bytes": staged_noto_serif_cjk_output.stat().st_size,
+                    "sourceSha256": noto_serif_cjk_source_hash,
+                    "glyphCodepoints": len(built_noto_serif_cjk_codepoints),
+                },
+            },
+        }
+        manifest_path = REPOSITORY_ROOT / "scripts" / "font-subset-manifest.json"
+        manifest_contents = json.dumps(
+            manifest,
+            ensure_ascii=False,
+            indent=2,
+        ) + "\n"
+
+        output_directory.mkdir(parents=True, exist_ok=True)
+        for staged_output, final_output in (
+            (staged_ming_output, ming_output),
+            (staged_garamond_output, garamond_output),
+            (staged_noto_serif_cjk_output, noto_serif_cjk_output),
+        ):
+            staged_output.replace(final_output)
+
+        write_text_atomically(manifest_path, manifest_contents)
+
+        for path, contents in revision_updates.items():
+            write_text_atomically(path, contents)
 
     print(
         "Built "
         f"{relative_to_repository(ming_output)} ({ming_output.stat().st_size:,} bytes) "
         "and "
         f"{relative_to_repository(garamond_output)} "
-        f"({garamond_output.stat().st_size:,} bytes)"
+        f"({garamond_output.stat().st_size:,} bytes), and "
+        f"{relative_to_repository(noto_serif_cjk_output)} "
+        f"({noto_serif_cjk_output.stat().st_size:,} bytes)"
     )
 
 

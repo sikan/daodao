@@ -17,13 +17,14 @@ const publicFiles = [
   "style.css",
   "robots.txt",
 ];
+const versionedPublicAssets = ["typography.js", "style.css", "app.js"];
 const fontManifestPath = resolve(
   repositoryRoot,
   "scripts",
   "font-subset-manifest.json"
 );
 const fontDirectory = resolve(repositoryRoot, "assets", "fonts");
-const mingUnicodeRanges = [
+const cjkUnicodeRanges = [
   [0x2000, 0x206f],
   [0x2e80, 0x33ff],
   [0x3400, 0x4dbf],
@@ -114,8 +115,8 @@ function characterLength(value) {
   return Array.from(value).length;
 }
 
-function isMingCodepoint(codepoint) {
-  return mingUnicodeRanges.some(
+function isCjkCodepoint(codepoint) {
+  return cjkUnicodeRanges.some(
     ([rangeStart, rangeEnd]) =>
       codepoint >= rangeStart && codepoint <= rangeEnd
   );
@@ -139,11 +140,12 @@ async function validateFontAssets() {
   const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
 
   if (
-    manifest.version !== 1 ||
+    manifest.version !== 2 ||
     !Array.isArray(manifest.textSources) ||
-    !Array.isArray(manifest.mingCodepoints) ||
+    !Array.isArray(manifest.cjkCodepoints) ||
     !manifest.fonts?.ming ||
-    !manifest.fonts?.garamond
+    !manifest.fonts?.garamond ||
+    !manifest.fonts?.notoSerifCjk
   ) {
     throw new Error("Invalid scripts/font-subset-manifest.json");
   }
@@ -156,13 +158,13 @@ async function validateFontAssets() {
     )
   ).join("");
   const includedCodepoints = new Set(
-    manifest.mingCodepoints.map((label) => Number.parseInt(label.slice(2), 16))
+    manifest.cjkCodepoints.map((label) => Number.parseInt(label.slice(2), 16))
   );
   const missingCodepoints = [
     ...new Set(
       Array.from(sourceText, (character) => character.codePointAt(0)).filter(
         (codepoint) =>
-          isMingCodepoint(codepoint) && !includedCodepoints.has(codepoint)
+          isCjkCodepoint(codepoint) && !includedCodepoints.has(codepoint)
       )
     ),
   ].sort((left, right) => left - right);
@@ -185,7 +187,7 @@ async function validateFontAssets() {
     }))
   );
 
-  for (const font of Object.values(manifest.fonts)) {
+  for (const [fontKey, font] of Object.entries(manifest.fonts)) {
     const fontPath = resolveFontAsset(font.file);
     const contents = await readFile(fontPath);
 
@@ -199,13 +201,27 @@ async function validateFontAssets() {
     const filename = font.file.split("/").at(-1);
     const versionedReference = `${filename}?v=${font.sha256.slice(0, 12)}`;
 
-    for (const source of fontReferenceSources) {
-      if (!source.contents.includes(versionedReference)) {
-        throw new Error(
-          `${source.sourcePath} is missing ${versionedReference}. ` +
-            "Run scripts/build-fonts.py before publishing."
-        );
-      }
+    const stylesheetSource = fontReferenceSources.find(
+      (source) => source.sourcePath === "style.css"
+    );
+
+    if (!stylesheetSource.contents.includes(versionedReference)) {
+      throw new Error(
+        `${stylesheetSource.sourcePath} is missing ${versionedReference}. ` +
+          "Run scripts/build-fonts.py before publishing."
+      );
+    }
+
+    if (
+      fontKey !== "notoSerifCjk" &&
+      !fontReferenceSources
+        .find((source) => source.sourcePath === "typography.js")
+        .contents.includes(versionedReference)
+    ) {
+      throw new Error(
+        `typography.js is missing ${versionedReference}. ` +
+          "Run scripts/build-fonts.py before publishing."
+      );
     }
   }
 
@@ -342,6 +358,25 @@ async function copyPublicFiles(outputDirectory) {
   );
 }
 
+async function versionPublicAssetReferences(outputDirectory) {
+  const indexPath = resolve(outputDirectory, "index.html");
+  let index = await readFile(indexPath, "utf8");
+
+  for (const filename of versionedPublicAssets) {
+    const reference = `./${filename}`;
+
+    if (!index.includes(reference)) {
+      throw new Error(`index.html is missing ${reference}`);
+    }
+
+    const contents = await readFile(resolve(outputDirectory, filename));
+    const versionedReference = `${reference}?v=${sha256(contents).slice(0, 12)}`;
+    index = index.replaceAll(reference, versionedReference);
+  }
+
+  await writeFile(indexPath, index, "utf8");
+}
+
 async function build() {
   const options = parseOptions(process.argv.slice(2));
   const outputDirectory = resolve(options.output);
@@ -350,6 +385,7 @@ async function build() {
   await validateFontAssets();
   await rm(outputDirectory, { recursive: true, force: true });
   await copyPublicFiles(outputDirectory);
+  await versionPublicAssetReferences(outputDirectory);
 
   const sourceDiary = await readFile(
     resolve(repositoryRoot, "daodao.master.txt"),

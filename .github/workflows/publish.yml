@@ -50,6 +50,7 @@ jobs:
             test -f "$site/typography.js"
             test -f "$site/assets/fonts/daodao-garamond-roman.woff2"
             test -f "$site/assets/fonts/daodao-ming-regular.woff2"
+            test -f "$site/assets/fonts/daodao-noto-serif-sc-light.woff2"
             test -f "$site/assets/fonts/noto-serif-300.ttf"
             test ! -e "$site/daodao.master.txt"
             test ! -e "$site/redactions.json"
@@ -57,7 +58,9 @@ jobs:
             grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$site/robots.txt"
             grep -Fq "Disallow: /daodao.txt" "$site/robots.txt"
             grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$site/index.html"
-            grep -Fq '<script src="./typography.js"></script>' "$site/index.html"
+            grep -Eq '<script src="\./typography\.js\?v=[0-9a-f]{12}"></script>' "$site/index.html"
+            grep -Eq '<link rel="stylesheet" href="\./style\.css\?v=[0-9a-f]{12}">' "$site/index.html"
+            grep -Eq '<script src="\./app\.js\?v=[0-9a-f]{12}" defer></script>' "$site/index.html"
           done
 
           cmp daodao.master.txt "$RUNNER_TEMP/raw-site/daodao.txt"
