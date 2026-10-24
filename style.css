@@ -1,0 +1,531 @@
+@font-face {
+  font-family: "Daodao Garamond";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-garamond-roman.woff2?v=a1487ddd96e6")
+    format("woff2");
+  size-adjust: 112%;
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+  unicode-range:
+    U+0020-007e,
+    U+00a0-024f,
+    U+1e00-1eff,
+    U+20ac;
+}
+
+@font-face {
+  font-family: "Daodao Ming";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-ming-regular.woff2?v=c5c764b574a1")
+    format("woff2");
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("./assets/fonts/noto-serif-300.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Daodao Songti SC";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src:
+    local("Songti SC Light"),
+    local("STSongti-SC-Light");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif SC";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=9e3192b86d6d")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/noto-serif-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/fonts/noto-serif-700.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/noto-serif-400-italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Daodao Noto Serif";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/fonts/noto-serif-700-italic.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Daodao Noto Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/noto-sans-400.ttf") format("truetype");
+}
+
+:root {
+  color-scheme: light;
+  --ink: #32261a;
+  --muted: rgba(50, 38, 26, 0.68);
+  --reading-ink: rgba(50, 38, 26, 0.68);
+  --reading-muted: rgba(50, 38, 26, 0.48);
+  --outside: #e9e6e1;
+  --paper: #f3efe8;
+  --panel-light: #f3efe8;
+  --panel-shade: #e9e2d8;
+  --rule: rgba(50, 38, 26, 0.18);
+  --page-width: 1280px;
+  --measure: 42rem;
+  --gutter: clamp(1.5rem, 5vw, 6rem);
+  --year-rail-entry-gutter: 5.25rem;
+  --entry-pad-block: 3rem;
+  --entry-min-height: 11.5rem;
+  --font-reading:
+    "Daodao Garamond",
+    "Daodao Ming",
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "STSong",
+    "Noto Serif CJK SC",
+    "Source Han Serif SC",
+    SimSun,
+    serif;
+  --reading-font-size: 1.125rem;
+  --reading-font-size-mobile: 1.0625rem;
+  --reading-font-size-wide: 1.16rem;
+  --reading-font-weight: 400;
+  --reading-line-height: 1.78;
+  --date-font-weight: 400;
+  --empty-note-font-style: normal;
+  --empty-note-letter-spacing: 0.02em;
+  --font-ui:
+    "Daodao Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
+html[data-typography="noto-system"] {
+  --font-reading:
+    "Daodao Noto Serif",
+    "Daodao Songti SC",
+    Georgia,
+    "Times New Roman",
+    "Songti SC",
+    "STSong",
+    "Daodao Noto Serif SC",
+    "Noto Serif CJK SC",
+    "Source Han Serif SC",
+    SimSun,
+    serif;
+  --reading-font-weight: 300;
+  --reading-ink: rgba(50, 38, 26, 0.68);
+  --reading-muted: rgba(50, 38, 26, 0.46);
+  --date-font-weight: 300;
+  --empty-note-font-style: italic;
+  --empty-note-letter-spacing: normal;
+}
+
+html[data-typography="noto-system"][data-apple-platform="true"] {
+  --reading-ink: var(--ink);
+  --reading-muted: var(--muted);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--outside);
+  color: var(--ink);
+  font-family: var(--font-reading);
+  font-size: 100%;
+  font-weight: var(--reading-font-weight);
+  font-kerning: normal;
+  font-synthesis: none;
+  font-variant-ligatures: common-ligatures contextual;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--outside);
+}
+
+.site-shell {
+  width: min(100%, var(--page-width));
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--paper);
+}
+
+.hero {
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  background: var(--ink);
+}
+
+.hero__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+.order-control {
+  position: fixed;
+  z-index: 10;
+  top: 1rem;
+  right: max(1rem, calc((100vw - var(--page-width)) / 2 + 1rem));
+  display: flex;
+  border: 1px solid rgba(50, 38, 26, 0.24);
+  background: rgba(243, 239, 232, 0.76);
+  backdrop-filter: blur(12px);
+}
+
+.order-control__button {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid rgba(50, 38, 26, 0.24);
+  margin: 0;
+  padding: 0.45rem 0.62rem;
+  background: transparent;
+  color: rgba(50, 38, 26, 0.66);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.order-control__button:last-child {
+  border-right: 0;
+}
+
+.order-control__button.is-active {
+  background: var(--ink);
+  color: var(--panel-light);
+}
+
+.order-control__button:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
+.order-control__button:focus-visible {
+  outline: 2px solid #7f5830;
+  outline-offset: 2px;
+}
+
+.diary {
+  min-height: 100vh;
+  padding-bottom: var(--diary-end-space, 0);
+}
+
+.diary--random {
+  --year-rail-entry-gutter: 0rem;
+}
+
+.year-rail[hidden] {
+  display: none;
+}
+
+.year-rail {
+  position: fixed;
+  z-index: 9;
+  top: clamp(4.5rem, 16vh, 8rem);
+  bottom: clamp(2rem, 9vh, 5rem);
+  left: max(0.5rem, calc((100vw - var(--page-width)) / 2 + 0.75rem));
+  width: 4rem;
+  opacity: 0;
+  pointer-events: none;
+  touch-action: none;
+  transform: translateX(-0.4rem);
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    visibility 0s linear 160ms;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.year-rail.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.year-rail__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.year-rail__list::before {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.55rem;
+  bottom: 0.7rem;
+  width: 1px;
+  background: var(--rule);
+  content: "";
+}
+
+.year-rail__item {
+  position: relative;
+  z-index: 1;
+}
+
+.year-rail__button {
+  appearance: none;
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 1.7rem;
+  border: 0;
+  margin: 0;
+  padding: 0.35rem 1.25rem 0.35rem 0;
+  background: transparent;
+  color: rgba(50, 38, 26, 0.54);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1;
+  text-align: right;
+}
+
+.year-rail__button::after {
+  position: absolute;
+  top: 50%;
+  right: 0.34rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border: 1px solid rgba(50, 38, 26, 0.46);
+  border-radius: 50%;
+  background: transparent;
+  content: "";
+  transform: translateY(-50%);
+  transition: background-color 120ms ease;
+}
+
+.year-rail__button.is-active::after {
+  background: rgba(50, 38, 26, 0.46);
+}
+
+.year-rail__button:focus-visible {
+  outline: 2px solid #7f5830;
+  outline-offset: 1px;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 11.25rem) minmax(0, 1fr);
+  column-gap: clamp(2rem, 6vw, 7rem);
+  align-items: start;
+  min-height: var(--entry-min-height);
+  padding: var(--entry-pad-block) var(--gutter);
+  padding-left: max(var(--gutter), var(--year-rail-entry-gutter));
+  background: var(--panel-light);
+}
+
+.entry--shade {
+  background: var(--panel-shade);
+}
+
+.entry__meta {
+  position: sticky;
+  top: 3rem;
+  padding-top: 0.42rem;
+}
+
+.entry__date {
+  display: inline-block;
+  color: var(--reading-ink);
+  font-family: var(--font-reading);
+  font-size: 0.92rem;
+  font-weight: var(--date-font-weight);
+  line-height: 1.35;
+}
+
+.entry__body {
+  width: min(100%, var(--measure));
+  color: var(--reading-ink);
+  line-break: strict;
+  overflow-wrap: break-word;
+}
+
+.entry__body p {
+  margin: 0 0 1.35em;
+  font-size: var(--reading-font-size);
+  font-weight: var(--reading-font-weight);
+  line-height: var(--reading-line-height);
+}
+
+.entry__body p:last-child {
+  margin-bottom: 0;
+}
+
+.entry__body blockquote {
+  margin: 2rem 0;
+  padding: 0 0 0 1.25rem;
+  border-left: 1px solid currentColor;
+  color: var(--reading-muted);
+}
+
+.entry__body .line {
+  display: block;
+}
+
+.entry__body .empty-note {
+  color: var(--reading-muted);
+  font-style: var(--empty-note-font-style);
+  letter-spacing: var(--empty-note-letter-spacing);
+}
+
+.entry--loading,
+.entry--error {
+  min-height: 100vh;
+}
+
+.entry--error .entry__body {
+  max-width: 34rem;
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--panel-light);
+}
+
+@media (max-width: 760px) {
+  :root {
+    --year-rail-entry-gutter: 4rem;
+  }
+
+  .entry {
+    grid-template-columns: 1fr;
+    row-gap: 1.4rem;
+    min-height: auto;
+    padding: 2.4rem clamp(1rem, 4vw, 1.25rem);
+    padding-left: max(
+      clamp(1.25rem, 7vw, 2rem),
+      var(--year-rail-entry-gutter)
+    );
+  }
+
+  .order-control {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  .year-rail {
+    top: clamp(4.25rem, 14vh, 6rem);
+    bottom: clamp(1.5rem, 7vh, 3rem);
+    left: 0.25rem;
+    width: 3rem;
+  }
+
+  .year-rail__list::before {
+    right: 0.38rem;
+  }
+
+  .year-rail__button {
+    min-height: 1.8rem;
+    padding-right: 1.05rem;
+    font-size: 0.64rem;
+  }
+
+  .year-rail__button::after {
+    right: 0.17rem;
+  }
+
+  .entry__meta {
+    position: static;
+    padding-top: 0;
+  }
+
+  .entry__body {
+    width: 100%;
+  }
+
+  .entry__body p {
+    font-size: var(--reading-font-size-mobile);
+    line-height: var(--reading-line-height);
+  }
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --entry-pad-block: 3.35rem;
+    --entry-min-height: 12.25rem;
+  }
+
+  .entry__body p {
+    font-size: var(--reading-font-size-wide);
+  }
+}
+
+@media (min-width: 1120px) {
+  .entry__body {
+    margin-top: 0.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
