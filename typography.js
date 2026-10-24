@@ -12,7 +12,7 @@
           type: "font/woff2",
         }),
         Object.freeze({
-          href: "./assets/fonts/daodao-ming-regular.woff2?v=e3b355ebbe2b",
+          href: "./assets/fonts/daodao-ming-regular.woff2?v=c5c764b574a1",
           type: "font/woff2",
         }),
       ]),
