@@ -787,6 +787,7 @@
     "U+5C51",
     "U+5C55",
     "U+5C5E",
+    "U+5C60",
     "U+5C65",
     "U+5C71",
     "U+5C81",
@@ -1566,6 +1567,7 @@
     "U+6DC6",
     "U+6DCB",
     "U+6DD8",
+    "U+6DDE",
     "U+6DE1",
     "U+6DF1",
     "U+6DF3",
@@ -2891,10 +2893,10 @@
     "ming": {
       "family": "Daodao Ming",
       "file": "assets/fonts/daodao-ming-regular.woff2",
-      "sha256": "437609ec27750f0d79beb64b396bab457aa0f130a38d754b0ed6ce795dc02d40",
-      "bytes": 487944,
+      "sha256": "ff298125e06b4d32a369922fae55140fc53472f0aad8b290294262b9b017df6a",
+      "bytes": 488380,
       "sourceSha256": "1c411a2e97b65c26aaa01707bbe06919569fcd7683c8bb5db114a96264710458",
-      "glyphCodepoints": 2878
+      "glyphCodepoints": 2880
     },
     "garamond": {
       "family": "Daodao Garamond",
@@ -2906,10 +2908,10 @@
     "notoSerifCjk": {
       "family": "Daodao Noto Serif SC",
       "file": "assets/fonts/daodao-noto-serif-sc-light.woff2",
-      "sha256": "69032b4eca92c4932c4bbbd39d569b31fc50e4396ce00b537dcb0b615ab02f4e",
-      "bytes": 1304008,
+      "sha256": "3f79fb7d6ec87a24b62ad8263c8a49c8837048894729ec3e6af9755621d49c9f",
+      "bytes": 1305940,
       "sourceSha256": "7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c",
-      "glyphCodepoints": 2878
+      "glyphCodepoints": 2880
     }
   }
 }
