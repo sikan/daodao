@@ -21,7 +21,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./assets/fonts/daodao-ming-regular.woff2?v=8720085a1cda")
+  src: url("./assets/fonts/daodao-ming-regular.woff2?v=b4a3288af166")
     format("woff2");
   ascent-override: 88%;
   descent-override: 12%;
@@ -51,7 +51,7 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=9257e03a2bef")
+  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=21bc8630812d")
     format("woff2");
 }
 
