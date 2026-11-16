@@ -37,6 +37,7 @@ const cjkUnicodeRanges = [
   [0x2ebf0, 0x2ee5f],
   [0x30000, 0x323af],
 ];
+const cjkSeed = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝";
 
 function parseOptions(argumentsList) {
   const options = {
@@ -126,6 +127,44 @@ function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
 
+function formatCodepoint(codepoint) {
+  return `U+${codepoint.toString(16).toUpperCase().padStart(4, "0")}`;
+}
+
+function parseCodepointLabels(labels, fieldName) {
+  if (!Array.isArray(labels)) {
+    throw new Error(`${fieldName} must be an array`);
+  }
+
+  const codepoints = labels.map((label) => {
+    if (typeof label !== "string" || !/^U\+[0-9A-F]{4,6}$/.test(label)) {
+      throw new Error(`Invalid codepoint label in ${fieldName}: ${label}`);
+    }
+
+    return Number.parseInt(label.slice(2), 16);
+  });
+
+  for (let index = 1; index < codepoints.length; index += 1) {
+    if (codepoints[index] <= codepoints[index - 1]) {
+      throw new Error(`${fieldName} must be unique and sorted`);
+    }
+  }
+
+  return new Set(codepoints);
+}
+
+function setDifference(left, right) {
+  return new Set([...left].filter((value) => !right.has(value)));
+}
+
+function describeCodepoints(codepoints) {
+  return [...codepoints]
+    .sort((left, right) => left - right)
+    .slice(0, 12)
+    .map(formatCodepoint)
+    .join(", ");
+}
+
 function resolveFontAsset(relativeFontPath) {
   const fontPath = resolve(repositoryRoot, relativeFontPath);
 
@@ -140,14 +179,24 @@ async function validateFontAssets() {
   const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
 
   if (
-    manifest.version !== 2 ||
+    manifest.version !== 3 ||
     !Array.isArray(manifest.textSources) ||
+    !Array.isArray(manifest.requiredReadingCodepoints) ||
     !Array.isArray(manifest.cjkCodepoints) ||
+    !manifest.readingSchemes ||
     !manifest.fonts?.ming ||
     !manifest.fonts?.garamond ||
+    !manifest.fonts?.serifSupplement ||
+    !manifest.fonts?.notoSerif300 ||
     !manifest.fonts?.notoSerifCjk
   ) {
     throw new Error("Invalid scripts/font-subset-manifest.json");
+  }
+
+  for (const schemeName of ["iming-garamond", "noto-system"]) {
+    if (!Array.isArray(manifest.readingSchemes[schemeName])) {
+      throw new Error(`Missing reading scheme in font manifest: ${schemeName}`);
+    }
   }
 
   const sourceText = (
@@ -157,23 +206,55 @@ async function validateFontAssets() {
       )
     )
   ).join("");
-  const includedCodepoints = new Set(
-    manifest.cjkCodepoints.map((label) => Number.parseInt(label.slice(2), 16))
+  const seededSourceText = cjkSeed + sourceText;
+  const requiredReadingCodepoints = new Set(
+    Array.from(seededSourceText)
+      .filter((character) => !/\p{C}/u.test(character))
+      .map((character) => character.codePointAt(0))
   );
-  const missingCodepoints = [
-    ...new Set(
-      Array.from(sourceText, (character) => character.codePointAt(0)).filter(
-        (codepoint) =>
-          isCjkCodepoint(codepoint) && !includedCodepoints.has(codepoint)
-      )
-    ),
-  ].sort((left, right) => left - right);
+  const requiredCjkCodepoints = new Set(
+    [...requiredReadingCodepoints].filter(isCjkCodepoint)
+  );
+  const manifestReadingCodepoints = parseCodepointLabels(
+    manifest.requiredReadingCodepoints,
+    "requiredReadingCodepoints"
+  );
+  const manifestCjkCodepoints = parseCodepointLabels(
+    manifest.cjkCodepoints,
+    "cjkCodepoints"
+  );
 
-  if (missingCodepoints.length > 0) {
-    const labels = missingCodepoints
-      .slice(0, 12)
-      .map((codepoint) => `U+${codepoint.toString(16).toUpperCase()}`)
-      .join(", ");
+  const missingReadingCodepoints = setDifference(
+    requiredReadingCodepoints,
+    manifestReadingCodepoints
+  );
+  const staleReadingCodepoints = setDifference(
+    manifestReadingCodepoints,
+    requiredReadingCodepoints
+  );
+  const missingCjkCodepoints = setDifference(
+    requiredCjkCodepoints,
+    manifestCjkCodepoints
+  );
+  const staleCjkCodepoints = setDifference(
+    manifestCjkCodepoints,
+    requiredCjkCodepoints
+  );
+
+  if (
+    missingReadingCodepoints.size > 0 ||
+    staleReadingCodepoints.size > 0 ||
+    missingCjkCodepoints.size > 0 ||
+    staleCjkCodepoints.size > 0
+  ) {
+    const labels = describeCodepoints(
+      new Set([
+        ...missingReadingCodepoints,
+        ...staleReadingCodepoints,
+        ...missingCjkCodepoints,
+        ...staleCjkCodepoints,
+      ])
+    );
     throw new Error(
       `The reading-font subset is stale (${labels}). ` +
         "Run scripts/build-fonts.py before publishing."
@@ -187,7 +268,19 @@ async function validateFontAssets() {
     }))
   );
 
+  const fontCodepoints = new Map();
+
   for (const [fontKey, font] of Object.entries(manifest.fonts)) {
+    if (
+      typeof font?.file !== "string" ||
+      typeof font?.sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(font.sha256) ||
+      !Number.isInteger(font.bytes) ||
+      typeof font.preload !== "boolean"
+    ) {
+      throw new Error(`Invalid font manifest entry: ${fontKey}`);
+    }
+
     const fontPath = resolveFontAsset(font.file);
     const contents = await readFile(fontPath);
 
@@ -213,7 +306,7 @@ async function validateFontAssets() {
     }
 
     if (
-      fontKey !== "notoSerifCjk" &&
+      font.preload &&
       !fontReferenceSources
         .find((source) => source.sourcePath === "typography.js")
         .contents.includes(versionedReference)
@@ -221,6 +314,58 @@ async function validateFontAssets() {
       throw new Error(
         `typography.js is missing ${versionedReference}. ` +
           "Run scripts/build-fonts.py before publishing."
+      );
+    }
+
+    let declaredCodepoints;
+
+    if (font.codepointSet === "cjk") {
+      declaredCodepoints = manifestCjkCodepoints;
+    } else {
+      declaredCodepoints = parseCodepointLabels(
+        font.codepoints,
+        `fonts.${fontKey}.codepoints`
+      );
+    }
+
+    if (font.glyphCodepoints !== declaredCodepoints.size) {
+      throw new Error(`Incorrect glyphCodepoints for font: ${fontKey}`);
+    }
+
+    fontCodepoints.set(fontKey, declaredCodepoints);
+  }
+
+  for (const [schemeName, schemeFonts] of Object.entries(
+    manifest.readingSchemes
+  )) {
+    if (!Array.isArray(schemeFonts) || schemeFonts.length === 0) {
+      throw new Error(`Invalid reading scheme: ${schemeName}`);
+    }
+
+    const schemeCodepoints = new Set();
+
+    for (const fontKey of schemeFonts) {
+      if (!fontCodepoints.has(fontKey)) {
+        throw new Error(
+          `Reading scheme ${schemeName} references unknown font: ${fontKey}`
+        );
+      }
+
+      for (const codepoint of fontCodepoints.get(fontKey)) {
+        schemeCodepoints.add(codepoint);
+      }
+    }
+
+    const uncoveredCodepoints = setDifference(
+      requiredReadingCodepoints,
+      schemeCodepoints
+    );
+
+    if (uncoveredCodepoints.size > 0) {
+      throw new Error(
+        `Reading scheme ${schemeName} would use an unplanned system fallback ` +
+          `(${describeCodepoints(uncoveredCodepoints)}). ` +
+          "Run scripts/build-fonts.py or update the reviewed font plan."
       );
     }
   }
@@ -391,8 +536,13 @@ async function build() {
     resolve(repositoryRoot, "daodao.master.txt"),
     "utf8"
   );
+  const sourceSwimming = await readFile(
+    resolve(repositoryRoot, "every-lap-counts.master.txt"),
+    "utf8"
+  );
 
   let publicDiary = sourceDiary;
+  let publicSwimming = sourceSwimming;
   let replacementCount = 0;
 
   if (options.mode === "redacted") {
@@ -403,13 +553,24 @@ async function build() {
     validateRedactionConfig(config);
 
     const redacted = applyRedactions(sourceDiary, config.replacements);
+    const redactedSwimming = applyRedactions(
+      sourceSwimming,
+      config.replacements
+    );
     publicDiary = redacted.output;
-    replacementCount = redacted.replacementCount;
+    publicSwimming = redactedSwimming.output;
+    replacementCount =
+      redacted.replacementCount + redactedSwimming.replacementCount;
   }
 
   await writeFile(
     resolve(outputDirectory, "daodao.txt"),
     publicDiary,
+    "utf8"
+  );
+  await writeFile(
+    resolve(outputDirectory, "every-lap-counts.txt"),
+    publicSwimming,
     "utf8"
   );
 

@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 400 800;
   font-display: swap;
-  src: url("./assets/fonts/daodao-garamond-roman.woff2?v=a1487ddd96e6")
+  src: url("./assets/fonts/daodao-garamond-roman.woff2?v=56bd1f1e8c69")
     format("woff2");
   size-adjust: 112%;
   ascent-override: 88%;
@@ -12,8 +12,11 @@
   unicode-range:
     U+0020-007e,
     U+00a0-024f,
+    U+03c0,
     U+1e00-1eff,
-    U+20ac;
+    U+20ac,
+    U+2192,
+    U+2212;
 }
 
 @font-face {
@@ -21,7 +24,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url("./assets/fonts/daodao-ming-regular.woff2?v=99312028f4c7")
+  src: url("./assets/fonts/daodao-ming-regular.woff2?v=ea1ce347c2b5")
     format("woff2");
   ascent-override: 88%;
   descent-override: 12%;
@@ -29,11 +32,25 @@
 }
 
 @font-face {
+  font-family: "Daodao Serif Supplement";
+  font-style: normal;
+  font-weight: 300 400;
+  font-display: swap;
+  src: url("./assets/fonts/daodao-serif-supplement.woff2?v=90fefbe6db05")
+    format("woff2");
+  ascent-override: 88%;
+  descent-override: 12%;
+  line-gap-override: 0%;
+  unicode-range: U+01d0, U+03c0, U+2192, U+21cc, U+2514;
+}
+
+@font-face {
   font-family: "Daodao Noto Serif";
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url("./assets/fonts/noto-serif-300.ttf") format("truetype");
+  src: url("./assets/fonts/noto-serif-300.ttf?v=627f4bb6ad30")
+    format("truetype");
 }
 
 @font-face {
@@ -51,7 +68,7 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=ee15df1775cb")
+  src: url("./assets/fonts/daodao-noto-serif-sc-light.woff2?v=37c6376781c9")
     format("woff2");
 }
 
@@ -112,9 +129,11 @@
   --year-rail-entry-gutter: 5.25rem;
   --entry-pad-block: 3rem;
   --entry-min-height: 11.5rem;
+  --swim-related-indent: 1.75rem;
   --font-reading:
     "Daodao Garamond",
     "Daodao Ming",
+    "Daodao Serif Supplement",
     Georgia,
     "Times New Roman",
     "Songti SC",
@@ -145,6 +164,7 @@
 html[data-typography="noto-system"] {
   --font-reading:
     "Daodao Noto Serif",
+    "Daodao Serif Supplement",
     "Daodao Songti SC",
     Georgia,
     "Times New Roman",
@@ -212,6 +232,48 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: center center;
+}
+
+.collection-control {
+  position: fixed;
+  z-index: 10;
+  top: 1rem;
+  left: max(1rem, calc((100vw - var(--page-width)) / 2 + 1rem));
+  display: flex;
+  border: 1px solid rgba(50, 38, 26, 0.24);
+  background: rgba(243, 239, 232, 0.76);
+  backdrop-filter: blur(12px);
+}
+
+.collection-control__button {
+  appearance: none;
+  border: 0;
+  border-right: 1px solid rgba(50, 38, 26, 0.24);
+  margin: 0;
+  padding: 0.47rem 0.72rem;
+  background: transparent;
+  color: rgba(50, 38, 26, 0.66);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: var(--date-font-weight);
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.collection-control__button:last-child {
+  border-right: 0;
+}
+
+.collection-control__button.is-active {
+  background: var(--ink);
+  color: var(--panel-light);
+}
+
+.collection-control__button:focus-visible {
+  outline: 2px solid #7f5830;
+  outline-offset: 2px;
 }
 
 .order-control {
@@ -433,6 +495,101 @@ body {
   letter-spacing: var(--empty-note-letter-spacing);
 }
 
+.swim-session {
+  margin: 1.4rem 0 0;
+  color: var(--reading-muted);
+}
+
+.entry__meta .swim-session p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.62;
+}
+
+.swim-session--competition {
+  color: var(--reading-ink);
+}
+
+.swim-program {
+  width: 100%;
+}
+
+.entry__body .swim-line {
+  margin: 0;
+  font-size: var(--reading-font-size);
+  line-height: var(--reading-line-height);
+}
+
+.entry__body .swim-line--spaced {
+  margin-top: 1.35rem;
+}
+
+.entry__body .swim-line--set {
+  color: var(--ink);
+  font-weight: var(--reading-font-weight);
+}
+
+.entry__body .swim-line--structure {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  column-gap: 0.15rem;
+  align-items: start;
+  color: var(--ink);
+}
+
+.entry__body .swim-line--structure p,
+.entry__body .swim-line--annotation p,
+.entry__body .swim-line--note p,
+.entry__body .swim-line--quote p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.swim-line__mark {
+  color: var(--reading-muted);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.entry__body .swim-line--structure .swim-line__mark {
+  color: var(--reading-muted);
+}
+
+.entry__body .swim-line--annotation {
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr);
+  column-gap: 0.2rem;
+  align-items: start;
+  width: calc(100% - var(--swim-related-indent));
+  margin-left: var(--swim-related-indent);
+  color: var(--reading-muted);
+}
+
+.entry__body .swim-line--annotation .swim-line__mark {
+  color: inherit;
+}
+
+.swim-line--note {
+  display: grid;
+  grid-template-columns: 0.9rem minmax(0, 1fr);
+  column-gap: 0.2rem;
+  align-items: start;
+  color: var(--reading-muted);
+}
+
+.entry__body .swim-line--quote {
+  width: calc(100% - var(--swim-related-indent));
+  border-left: 1px solid currentColor;
+  margin: 0 0 0 var(--swim-related-indent);
+  padding: 0 0 0 1rem;
+  color: var(--reading-muted);
+}
+
+.entry__body .swim-line--quote.swim-line--spaced {
+  margin-top: 1.35rem;
+}
+
 .entry--loading,
 .entry--error {
   min-height: 100vh;
@@ -450,22 +607,23 @@ body {
 @media (max-width: 760px) {
   :root {
     --year-rail-entry-gutter: 4rem;
-  }
-
-  .entry {
-    grid-template-columns: 1fr;
-    row-gap: 1.4rem;
-    min-height: auto;
-    padding: 2.4rem clamp(1rem, 4vw, 1.25rem);
-    padding-left: max(
-      clamp(1.25rem, 7vw, 2rem),
-      var(--year-rail-entry-gutter)
-    );
+    --swim-related-indent: 1.25rem;
   }
 
   .order-control {
     top: 0.75rem;
     right: 0.75rem;
+  }
+
+  .collection-control {
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .collection-control__button {
+    padding: 0.48rem 0.52rem;
+    font-size: 0.69rem;
+    letter-spacing: 0.035em;
   }
 
   .year-rail {
@@ -489,6 +647,17 @@ body {
     right: 0.17rem;
   }
 
+  .entry {
+    grid-template-columns: 1fr;
+    row-gap: 1.4rem;
+    min-height: auto;
+    padding: 2.4rem clamp(1rem, 4vw, 1.25rem);
+    padding-left: max(
+      clamp(1.25rem, 7vw, 2rem),
+      var(--year-rail-entry-gutter)
+    );
+  }
+
   .entry__meta {
     position: static;
     padding-top: 0;
@@ -501,6 +670,20 @@ body {
   .entry__body p {
     font-size: var(--reading-font-size-mobile);
     line-height: var(--reading-line-height);
+  }
+
+  .entry__body .swim-line {
+    font-size: var(--reading-font-size-mobile);
+  }
+}
+
+@media (max-width: 480px) {
+  .order-control {
+    top: 3.35rem;
+  }
+
+  .year-rail {
+    top: clamp(7rem, 18vh, 8.5rem);
   }
 }
 

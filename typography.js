@@ -8,11 +8,11 @@
     "iming-garamond": Object.freeze({
       preloads: Object.freeze([
         Object.freeze({
-          href: "./assets/fonts/daodao-garamond-roman.woff2?v=a1487ddd96e6",
+          href: "./assets/fonts/daodao-garamond-roman.woff2?v=56bd1f1e8c69",
           type: "font/woff2",
         }),
         Object.freeze({
-          href: "./assets/fonts/daodao-ming-regular.woff2?v=99312028f4c7",
+          href: "./assets/fonts/daodao-ming-regular.woff2?v=ea1ce347c2b5",
           type: "font/woff2",
         }),
       ]),
@@ -20,7 +20,7 @@
     "noto-system": Object.freeze({
       preloads: Object.freeze([
         Object.freeze({
-          href: "./assets/fonts/noto-serif-300.ttf",
+          href: "./assets/fonts/noto-serif-300.ttf?v=627f4bb6ad30",
           type: "font/ttf",
         }),
       ]),

@@ -8,6 +8,7 @@ DAODAO CODEX CHECKLIST
 本规范用于审查本仓库相对当前 HEAD 的全部待提交改动。
 
 主要正文：daodao.master.txt
+游泳记录正文：every-lap-counts.master.txt
 脱敏规则：redactions.json
 字体更新说明：FONT_SUBSET_UPDATE.md
 字体已知限制：FONT_KNOWN_LIMITATIONS.md
@@ -595,7 +596,15 @@ daodao.master.txt 中的日记日期通常是单独一行的八位数字 YYYYMMD
 • 使用“似乎”“好像”“据说”“大概”等表达：属于保留判断，不应改成确定事实；
 • 玩笑、类比和夸张：不要按字面事实纠正。
 
-2. 外部查询原则
+2. 游泳记录的 Raw–Master 优先关系
+
+处理 every-lap-counts.raw.txt 与 every-lap-counts.master.txt 时，必须先完整阅读 EVERY_LAP_COUNTS_NORMALIZATION.md；版式细节再参考 EVERY_LAP_COUNTS_TRANSCRIPTION_RULES_DRAFT.md。两份规则冲突时以前者为准。
+
+来源优先级为：作者最近的明确确认及其手工修正；已确认并写入 Master 或 redactions.json 的修正；Raw 速记；规则推断和一般游泳知识。不得为了追求 Raw–Master 字面一致而把已确认的 Master 修正恢复成旧 Raw。未说明的差异应报告并人工判断。
+
+自动流程不得擅自回写 Raw；作者可以在确认速记笔误后直接修正 Raw，也可以只修正 Master。全名得到确认或修正后，应同步检查 Master 与 redactions.json；引语中的有意错读或误称不得机械替换。
+
+3. 外部查询原则
 
 • 事实较新、容易变化、非常专业或无法可靠回忆时才查询；
 • 当前产品、赛事、电影和规则应优先查询；
@@ -628,7 +637,7 @@ assets/fonts/README.md
 • 只有构建明确报告字体子集过期时，才需要重建；
 • 字体重建应放在本轮文字修改完成之后；
 • 重建后如果再次修改正文、脱敏规则或界面文字，必须重新运行构建检查；
-• 对 Emoji、罕见拉丁字母、特殊数学符号和 CJK 范围外字符，还需另外检查实际字体覆盖与浏览器回退；
+• 构建会检查两套正文方案的全部现用码位覆盖；Emoji 或新增特殊字符仍需人工判断应由主字体、补充字体还是有意系统回退承担；
 • 每次涉及字体变化时都应读取 FONT_KNOWN_LIMITATIONS.md，确认没有新增或扩大已知限制。
 
 3. 普通审核保持只读
@@ -654,7 +663,7 @@ node --version
 
 5. 判断是否需要重建
 
-如果 redacted 和 raw 两种模式均成功构建，且没有字体清单、字体哈希、缓存引用或缺失码位错误，说明当前脚本覆盖范围内的 CJK 字符集完整，不需要重建。
+如果 redacted 和 raw 两种模式均成功构建，且没有字体清单、字体哈希、缓存引用、缺失码位或未计划系统回退错误，说明当前精确 CJK 集合和两套正文方案的全文码位覆盖完整，不需要重建。
 
 如果出现类似错误：
 
@@ -675,6 +684,7 @@ The reading-font subset is stale (U+....). Run scripts/build-fonts.py before pub
 当前字体脚本从以下文件收集 CJK 字符：
 
 daodao.master.txt
+every-lap-counts.master.txt
 redactions.json
 index.html
 app.js
@@ -684,9 +694,9 @@ typography.js
 
 因此，新增日记、脱敏替换目标、界面文字、中文全角符号、CJK 扩展字符、兼容字符和脚本覆盖范围内的日文假名都可能触发字符集更新。
 
-自动 stale-subset 检查只覆盖 build-site.mjs 和 build-fonts.py 定义的 CJK 范围及相关标点，不等于验证全部 Unicode 字符。
+自动 stale-subset 检查会验证精确 CJK 集合，并验证两个正文方案登记的自托管字体并集覆盖全部当前文字来源中的非控制字符；它不等于承诺覆盖将来任意输入的 Unicode 字符。
 
-Daodao Garamond 的拉丁字符并不是按日记实际使用字符逐个收集，而是保留脚本定义的固定拉丁字符范围。
+Daodao Garamond 保留脚本定义的固定拉丁字符范围，并额外明确收录 π（U+03C0）、→（U+2192）与 −（U+2212）。Daodao Serif Supplement 精确收录 ǐ（U+01D0）、π（U+03C0）、→（U+2192）、⇌（U+21CC）与 └（U+2514）。
 
 7. 审核与重建权限边界
 
@@ -794,10 +804,11 @@ SHA-256：7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c
 脚本应完成：
 
 • 验证三个上游字体的 SHA-256；
-• 收集全部文字来源中的 CJK 码位；
+• 收集全部文字来源中的正文码位，并从中得到精确 CJK 集合；
 • 确认上游字体包含所有所需字形；
 • 在临时暂存目录中生成字体；
 • 生成 WOFF2 子集；
+• 在替换正式文件前确认四份生成 cmap 精确，并确认两套正文方案覆盖全部当前正文码位；
 • 按许可证设置派生字体名称；
 • 计算字体大小和 SHA-256；
 • 更新 scripts/font-subset-manifest.json；
@@ -810,10 +821,12 @@ iming-garamond 是默认排版方案：
 
 • 拉丁文字使用由 EB Garamond 派生的 Daodao Garamond；
 • 中文文字使用由 I.MingCP 派生的 Daodao Ming。
+• Daodao Serif Supplement 补齐前两者未覆盖的明确符号缺口。
 
 noto-system 是备用排版方案：
 
 • 拉丁文字使用仓库已有的 Noto Serif；
+• Daodao Serif Supplement 补齐旧 Noto Serif 300 的明确码位缺口；
 • Apple 平台中文优先使用系统 Songti SC；
 • 没有 Songti SC 或需要备用字体时，使用自托管的 Daodao Noto Serif SC 子集。
 
@@ -826,12 +839,13 @@ redacted 和 raw 是发布内容模式；iming-garamond 和 noto-system 是排�
 assets/fonts/daodao-ming-regular.woff2
 assets/fonts/daodao-noto-serif-sc-light.woff2
 assets/fonts/daodao-garamond-roman.woff2
+assets/fonts/daodao-serif-supplement.woff2
 scripts/font-subset-manifest.json
 style.css
 typography.js
 FONT_KNOWN_LIMITATIONS.md（仅在字符数或已知限制说明需要同步时）
 
-只新增中文字符时，通常是两个中文子集、清单及相应缓存哈希变化。Daodao Garamond 通常不会发生实质变化，因为它使用固定拉丁范围；生成脚本仍会重建并比较它。
+只新增中文字符时，通常是两个中文子集、清单及相应缓存哈希变化。Daodao Garamond 与五码位补充字体通常不会发生实质变化；生成脚本仍会重建并比较它们。
 
 如果出现其他仓库文件变化，必须逐项调查。
 
@@ -849,32 +863,39 @@ FONT_KNOWN_LIMITATIONS.md（仅在字符数或已知限制说明需要同步时�
 检查 scripts/font-subset-manifest.json：
 
 • JSON 可以解析；
-• version 为 2；
+• version 为 3；
 • textSources 与 build-fonts.py 中的 TEXT_SOURCES 一致；
+• requiredReadingCodepoints 与当前全部文字来源及基础标点中的非控制字符集合完全相等；
 • cjkCodepoints 包含本轮新增的有效 CJK 码位；
 • cjkCodepoints 无重复且保持排序；
-• ming、garamond 和 notoSerifCjk 三项存在；
+• ming、garamond、serifSupplement、notoSerif300 和 notoSerifCjk 五项存在；
+• readingSchemes 明确登记 iming-garamond 与 noto-system 的自托管覆盖组合；
 • 字体路径正确；
 • bytes 与实际大小一致；
 • sha256 与实际文件一致；
-• sourceSha256 与三个固定上游字体一致；
+• 三份派生来源的 sourceSha256 与三个固定上游字体一致；
 • 两个中文字体的 glyphCodepoints 与实际结果一致；
+• Garamond、补充字体和旧 Noto Serif 300 的 codepoints、glyphCodepoints 与实际 cmap 一致；
+• 每套 readingSchemes 字体并集覆盖 requiredReadingCodepoints；
 • style.css 和 typography.js 的版本参数与字体 SHA-256 前十二位一致。
 
-还必须使用 FontTools 逐一验证三份固定上游字体和三份生成字体：
+还必须使用 FontTools 逐一验证三份固定上游字体、四份生成字体和清单登记的旧 Noto Serif 300：
 
 • 三份上游字体的内部名称、字重和版本分别对应 I.MingCP 8.10、EB Garamond 1.003 和 Noto Serif CJK SC 2.003 Light；
-• 三份生成的 WOFF2 均可完整打开、解压并解析字体表；
+• 四份生成的 WOFF2 均可完整打开、解压并解析字体表；
 • Daodao Ming 的 family、subfamily、full name 和 PostScript name 分别为 Daodao Ming、Regular、Daodao Ming Regular 和 DaodaoMing-Regular；
 • Daodao Garamond 的 family、subfamily、full name 和 PostScript name 分别为 Daodao Garamond、Regular、Daodao Garamond Regular 和 DaodaoGaramond-Regular；
+• Daodao Serif Supplement 的 family、subfamily、full name 和 PostScript name 分别为 Daodao Serif Supplement、Light、Daodao Serif Supplement Light 和 DaodaoSerifSupplement-Light；
 • Daodao Noto Serif SC 的 family、subfamily、full name 和 PostScript name 分别为 Daodao Noto Serif SC、Light、Daodao Noto Serif SC Light 和 DaodaoNotoSerifSC-Light；
-• Daodao Garamond 的实际 Unicode cmap 必须与固定 EB Garamond 源字体在 build-fonts.py 所定义 LATIN_RANGES 内的码位集合完全相等；
+• Daodao Garamond 的实际 Unicode cmap 必须与固定 EB Garamond 源字体在 build-fonts.py 所定义 LATIN_RANGES 内的码位集合加 GARAMOND_EXTRA_CODEPOINTS 完全相等；
+• Daodao Serif Supplement 的实际 Unicode cmap 必须与 SERIF_SUPPLEMENT_CODEPOINTS 完全相等；
 • Daodao Garamond 必须保留可变字体的 fvar 表及其字重轴。
 
-不能只看到新码位出现在 JSON 中就认为完成。必须读取下列两个 WOFF2 的 Unicode cmap：
+不能只看到新码位出现在 JSON 中就认为完成。必须读取下列三份内容相关 WOFF2 的 Unicode cmap：
 
 assets/fonts/daodao-ming-regular.woff2
 assets/fonts/daodao-noto-serif-sc-light.woff2
+assets/fonts/daodao-serif-supplement.woff2
 
 必须独立重新计算当前全部文字来源和基础标点所需的完整 CJK 码位集合，并确认两个中文字体的实际 Unicode cmap 都与该集合完全相等：既不能遗漏任何所需码位，也不能包含任何多余码位。
 
@@ -882,7 +903,7 @@ assets/fonts/daodao-noto-serif-sc-light.woff2
 
 每次正式重建都必须至少连续执行两次，并比较以下全部产物是否逐字节一致：
 
-• 三份生成字体；
+• 四份生成字体；
 • scripts/font-subset-manifest.json；
 • style.css；
 • typography.js。
@@ -905,7 +926,9 @@ node scripts/build-site.mjs --mode raw --output "$FONT_WORK/site-raw"
 • style.css 的字体引用存在；
 • typography.js 的预加载引用存在；
 • 每个预加载字体都有相应的 font-face；
+• iming-garamond 与 noto-system 的登记字体并集都覆盖 requiredReadingCodepoints；
 • raw/daodao.txt 与 daodao.master.txt 字节级一致；
+• raw/every-lap-counts.txt 与 every-lap-counts.master.txt 字节级一致；
 • redacted 版本实际执行替换；
 • redacted 版本不残留 redactions.json 中的 from 字符串；
 • 输出全部位于仓库外；
@@ -914,6 +937,7 @@ node scripts/build-site.mjs --mode raw --output "$FONT_WORK/site-raw"
 原始版本可以使用以下命令核对：
 
 cmp daodao.master.txt "$FONT_WORK/site-raw/daodao.txt"
+cmp every-lap-counts.master.txt "$FONT_WORK/site-raw/every-lap-counts.txt"
 
 18. 视觉检查
 
@@ -927,7 +951,7 @@ cmp daodao.master.txt "$FONT_WORK/site-raw/daodao.txt"
 • 字形容易与其他字符混淆；
 • 字体文件变化范围异常；
 • CSS、font-face、预加载或排版选择逻辑同时变化；
-• 自动检查通过，但浏览器仍可能发生字体回退。
+• 自动检查通过，但仍需确认 CSS 实际路由与字形视觉协调。
 
 分别检查：
 
@@ -937,7 +961,7 @@ http://localhost:8000/?typography=noto-system
 确认：
 
 • 新字符不是方框、空白或替换字符；
-• 没有明显回退为不协调的字体；
+• π、→、−、⇌、└ 与带声调拉丁字母没有明显回退为不协调的字体；
 • 中文标点位置正常；
 • 字重、行高和相邻文字协调；
 • 切换方案后页面正常；
@@ -953,11 +977,11 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 
 每次字体重建后应确认：
 
-• 已知限制没有被误写成“已经解决”；
+• 已经解决的正文回退没有继续被误写成当前限制；
 • 新字符没有扩大现有限制；
 • 字符数量和哈希说明与实际产物一致；
 • 如出现新的回退、缺字或字形不协调，已经补充记录；
-• 当前已知的备用方案拉丁字符回退与本轮 CJK 子集是否完整是两件不同的事情，不得混淆。
+• 中文 UI 的有意系统字体行为和备用方案 300 斜体限制，没有与正文自托管覆盖混淆。
 
 20. 重建后的完整 Git 检查
 
@@ -975,7 +999,7 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 
 21. 发布流程关系
 
-当前 GitHub Actions 使用 Node.js 24。推送 main 后，发布流程分别构建脱敏 public 版本和受保护 raw 版本，并确认 raw/daodao.txt 与 daodao.master.txt 一致。
+当前 GitHub Actions 使用 Node.js 24。推送 main 后，发布流程分别构建脱敏 public 版本和受保护 raw 版本，并确认 raw/daodao.txt 与 daodao.master.txt、raw/every-lap-counts.txt 与 every-lap-counts.master.txt 分别一致。
 
 如果字体子集过期、字体哈希不匹配或缓存引用错误，发布应在更新线上版本之前失败。
 
@@ -985,15 +1009,15 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 
 现有字符集无需更新时：
 
-已执行 raw 和 redacted 双模式站点构建。现有 CJK 字体子集完整覆盖当前脚本所检查的正文、脱敏规则和界面文字；字体文件、清单及缓存引用验证正常，不需要重建字符集。
+已执行 raw 和 redacted 双模式站点构建。两份 CJK 字体子集与当前所需 CJK 集合完全相等；两套正文排版方案的登记自托管字体均覆盖当前全部正文码位；字体文件、清单及缓存引用验证正常，不需要重建字符集。
 
 字符集已经重建时：
 
-字符集已使用固定上游字体和固定工具版本重建。Daodao Ming 和 Daodao Noto Serif SC 的实际 Unicode cmap 与完整所需 CJK 集合完全相等，没有遗漏或多余码位；三份生成字体的内部名称、字体结构、Garamond 拉丁覆盖和可变字体表均正确；两次独立重建逐字节一致；上游哈希、生成字体哈希、字体清单、缓存引用以及 raw 和 redacted 双模式构建均验证通过。
+字符集已使用固定上游字体和固定工具版本重建。Daodao Ming 和 Daodao Noto Serif SC 的实际 Unicode cmap 与完整所需 CJK 集合完全相等，没有遗漏或多余码位；四份生成字体的内部名称与字体结构正确，Garamond 的固定范围加三个补充码位和可变字体表正确，五码位补充字体精确；两套正文方案覆盖全部当前正文码位；两次独立重建逐字节一致；上游哈希、生成字体哈希、字体清单、缓存引用以及 raw 和 redacted 双模式构建均验证通过。
 
 字符集过期但未获准重建时：
 
-当前文字检查已完成，但字体子集缺少指定 CJK 码位。普通审核保持只读；完成字符集重建并通过全部验证后才可以提交。
+当前文字检查已完成，但字体子集或正文方案覆盖缺少指定码位。普通审核保持只读；完成字符集重建并通过全部验证后才可以提交。
 
 23. 可以提交的字符集条件
 
@@ -1003,9 +1027,10 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 • 当前 HEAD 已重新确认；
 • raw 和 redacted 两种模式构建成功；
 • 两个中文字体的实际 Unicode cmap 与独立计算出的完整所需 CJK 集合完全相等，没有遗漏或多余码位；
+• 两套正文方案登记的自托管字体并集覆盖独立计算出的全部当前正文码位；
 • 字体文件、清单及缓存引用一致；
-• 三份生成 WOFF2 均可完整解析，内部名称正确，Daodao Garamond 的拉丁覆盖和 fvar 表验证通过；
-• raw 输出与 daodao.master.txt 字节级一致；
+• 四份生成 WOFF2 均可完整解析，内部名称正确，Daodao Garamond 的固定范围加三个补充码位和 fvar 表、Daodao Serif Supplement 的精确五码位均验证通过；
+• raw 输出与 daodao.master.txt、every-lap-counts.master.txt 分别字节级一致；
 • redacted 输出没有残留脱敏源字符串；
 • 如进行重建，使用固定上游字体和固定工具依赖；
 • 如进行重建，至少两次正式重建的全部产物逐字节一致；

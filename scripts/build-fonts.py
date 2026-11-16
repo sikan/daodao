@@ -15,6 +15,7 @@ import os
 import re
 import stat
 import tempfile
+import unicodedata
 from pathlib import Path
 from typing import Iterable
 
@@ -25,12 +26,21 @@ from fontTools.ttLib import TTFont
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 TEXT_SOURCES = (
     "daodao.master.txt",
+    "every-lap-counts.master.txt",
     "redactions.json",
     "index.html",
     "app.js",
     "typography.js",
 )
 CJK_SEED = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝"
+GARAMOND_EXTRA_CODEPOINTS = frozenset((0x03C0, 0x2192, 0x2212))
+SERIF_SUPPLEMENT_CODEPOINTS = frozenset(
+    (0x01D0, 0x03C0, 0x2192, 0x21CC, 0x2514)
+)
+READING_SCHEMES = {
+    "iming-garamond": ("garamond", "ming", "serifSupplement"),
+    "noto-system": ("notoSerif300", "serifSupplement", "notoSerifCjk"),
+}
 
 SOURCE_HASHES = {
     "iming": "1c411a2e97b65c26aaa01707bbe06919569fcd7683c8bb5db114a96264710458",
@@ -42,11 +52,14 @@ FONT_REVISION_TARGETS = {
     "typography.js": (
         "daodao-garamond-roman.woff2",
         "daodao-ming-regular.woff2",
+        "noto-serif-300.ttf",
     ),
     "style.css": (
         "daodao-garamond-roman.woff2",
         "daodao-ming-regular.woff2",
+        "daodao-serif-supplement.woff2",
         "daodao-noto-serif-sc-light.woff2",
+        "noto-serif-300.ttf",
     ),
 }
 
@@ -129,6 +142,14 @@ def is_in_ranges(codepoint: int, ranges: Iterable[tuple[int, int]]) -> bool:
 
 
 def collect_cjk_codepoints() -> set[int]:
+    return {
+        codepoint
+        for codepoint in collect_required_reading_codepoints()
+        if is_in_ranges(codepoint, CJK_RANGES)
+    }
+
+
+def collect_required_reading_codepoints() -> set[int]:
     text = CJK_SEED + "".join(
         (REPOSITORY_ROOT / relative_path).read_text(encoding="utf-8")
         for relative_path in TEXT_SOURCES
@@ -137,8 +158,12 @@ def collect_cjk_codepoints() -> set[int]:
     return {
         ord(character)
         for character in text
-        if is_in_ranges(ord(character), CJK_RANGES)
+        if not unicodedata.category(character).startswith("C")
     }
+
+
+def codepoint_labels(codepoints: Iterable[int]) -> list[str]:
+    return [f"U+{codepoint:04X}" for codepoint in sorted(codepoints)]
 
 
 def unicode_cmap(font: TTFont) -> set[int]:
@@ -315,18 +340,41 @@ def main() -> None:
         arguments.accept_different_sources,
     )
 
+    required_reading_codepoints = collect_required_reading_codepoints()
     cjk_codepoints = collect_cjk_codepoints()
     garamond_source = TTFont(arguments.garamond, recalcTimestamp=False)
-    garamond_codepoints = unicode_cmap(garamond_source) & codepoints_in_ranges(
-        LATIN_RANGES
+    garamond_source_codepoints = unicode_cmap(garamond_source)
+    garamond_codepoints = (
+        garamond_source_codepoints & codepoints_in_ranges(LATIN_RANGES)
+    ) | GARAMOND_EXTRA_CODEPOINTS
+    missing_garamond_extras = (
+        GARAMOND_EXTRA_CODEPOINTS - garamond_source_codepoints
     )
     garamond_source.close()
 
+    if missing_garamond_extras:
+        labels = ", ".join(codepoint_labels(missing_garamond_extras))
+        raise ValueError(f"EB Garamond is missing configured extras: {labels}")
+
     ming_output = output_directory / "daodao-ming-regular.woff2"
     garamond_output = output_directory / "daodao-garamond-roman.woff2"
+    serif_supplement_output = (
+        output_directory / "daodao-serif-supplement.woff2"
+    )
     noto_serif_cjk_output = (
         output_directory / "daodao-noto-serif-sc-light.woff2"
     )
+    noto_serif_300_output = output_directory / "noto-serif-300.ttf"
+
+    if not noto_serif_300_output.is_file():
+        raise FileNotFoundError(
+            f"Missing tracked legacy reading font: {noto_serif_300_output}"
+        )
+
+    noto_serif_300_font = TTFont(noto_serif_300_output, recalcTimestamp=False)
+    noto_serif_300_codepoints = unicode_cmap(noto_serif_300_font)
+    noto_serif_300_font.close()
+    noto_serif_300_hash = sha256(noto_serif_300_output)
 
     output_directory.parent.mkdir(parents=True, exist_ok=True)
 
@@ -337,6 +385,9 @@ def main() -> None:
         staging_directory = Path(staging_directory_name)
         staged_ming_output = staging_directory / ming_output.name
         staged_garamond_output = staging_directory / garamond_output.name
+        staged_serif_supplement_output = (
+            staging_directory / serif_supplement_output.name
+        )
         staged_noto_serif_cjk_output = (
             staging_directory / noto_serif_cjk_output.name
         )
@@ -349,13 +400,22 @@ def main() -> None:
             full_name="Daodao Ming Regular",
             postscript_name="DaodaoMing-Regular",
         )
-        build_subset(
+        built_garamond_codepoints = build_subset(
             arguments.garamond,
             staged_garamond_output,
             garamond_codepoints,
             family="Daodao Garamond",
             full_name="Daodao Garamond Regular",
             postscript_name="DaodaoGaramond-Regular",
+        )
+        built_serif_supplement_codepoints = build_subset(
+            arguments.noto_serif_cjk,
+            staged_serif_supplement_output,
+            set(SERIF_SUPPLEMENT_CODEPOINTS),
+            family="Daodao Serif Supplement",
+            subfamily="Light",
+            full_name="Daodao Serif Supplement Light",
+            postscript_name="DaodaoSerifSupplement-Light",
         )
         built_noto_serif_cjk_codepoints = build_subset(
             arguments.noto_serif_cjk,
@@ -367,21 +427,76 @@ def main() -> None:
             postscript_name="DaodaoNotoSerifSC-Light",
         )
 
+        exact_subsets = {
+            "Daodao Ming": (built_ming_codepoints, cjk_codepoints),
+            "Daodao Garamond": (
+                built_garamond_codepoints,
+                garamond_codepoints,
+            ),
+            "Daodao Serif Supplement": (
+                built_serif_supplement_codepoints,
+                set(SERIF_SUPPLEMENT_CODEPOINTS),
+            ),
+            "Daodao Noto Serif SC": (
+                built_noto_serif_cjk_codepoints,
+                cjk_codepoints,
+            ),
+        }
+
+        for family, (actual_codepoints, expected_codepoints) in (
+            exact_subsets.items()
+        ):
+            if actual_codepoints != expected_codepoints:
+                differences = actual_codepoints ^ expected_codepoints
+                labels = ", ".join(codepoint_labels(differences)[:12])
+                raise ValueError(
+                    f"{family} subset cmap is not exact: {labels}"
+                )
+
+        font_codepoints = {
+            "ming": built_ming_codepoints,
+            "garamond": built_garamond_codepoints,
+            "serifSupplement": built_serif_supplement_codepoints,
+            "notoSerif300": noto_serif_300_codepoints,
+            "notoSerifCjk": built_noto_serif_cjk_codepoints,
+        }
+
+        for scheme, font_keys in READING_SCHEMES.items():
+            covered_codepoints = set().union(
+                *(font_codepoints[font_key] for font_key in font_keys)
+            )
+            missing_codepoints = required_reading_codepoints - covered_codepoints
+
+            if missing_codepoints:
+                labels = ", ".join(codepoint_labels(missing_codepoints)[:12])
+                raise ValueError(
+                    f"Reading scheme {scheme} has no reviewed coverage for: "
+                    f"{labels}"
+                )
+
         ming_hash = sha256(staged_ming_output)
         garamond_hash = sha256(staged_garamond_output)
+        serif_supplement_hash = sha256(staged_serif_supplement_output)
         noto_serif_cjk_hash = sha256(staged_noto_serif_cjk_output)
         font_hashes = {
             ming_output.name: ming_hash,
             garamond_output.name: garamond_hash,
+            serif_supplement_output.name: serif_supplement_hash,
             noto_serif_cjk_output.name: noto_serif_cjk_hash,
+            noto_serif_300_output.name: noto_serif_300_hash,
         }
         revision_updates = prepare_font_revision_updates(font_hashes)
         manifest = {
-            "version": 2,
+            "version": 3,
             "textSources": list(TEXT_SOURCES),
-            "cjkCodepoints": [
-                f"U+{codepoint:04X}" for codepoint in sorted(cjk_codepoints)
-            ],
+            "requiredReadingCodepoints": codepoint_labels(
+                required_reading_codepoints
+            ),
+            "cjkCodepoints": codepoint_labels(cjk_codepoints),
+            "readingSchemes": {
+                scheme: list(font_keys)
+                for scheme, font_keys in READING_SCHEMES.items()
+            },
             "fonts": {
                 "ming": {
                     "family": "Daodao Ming",
@@ -390,6 +505,8 @@ def main() -> None:
                     "bytes": staged_ming_output.stat().st_size,
                     "sourceSha256": iming_source_hash,
                     "glyphCodepoints": len(built_ming_codepoints),
+                    "codepointSet": "cjk",
+                    "preload": True,
                 },
                 "garamond": {
                     "family": "Daodao Garamond",
@@ -397,6 +514,33 @@ def main() -> None:
                     "sha256": garamond_hash,
                     "bytes": staged_garamond_output.stat().st_size,
                     "sourceSha256": garamond_source_hash,
+                    "glyphCodepoints": len(built_garamond_codepoints),
+                    "codepoints": codepoint_labels(
+                        built_garamond_codepoints
+                    ),
+                    "preload": True,
+                },
+                "serifSupplement": {
+                    "family": "Daodao Serif Supplement",
+                    "file": relative_to_repository(serif_supplement_output),
+                    "sha256": serif_supplement_hash,
+                    "bytes": staged_serif_supplement_output.stat().st_size,
+                    "sourceSha256": noto_serif_cjk_source_hash,
+                    "glyphCodepoints": len(built_serif_supplement_codepoints),
+                    "codepoints": codepoint_labels(
+                        built_serif_supplement_codepoints
+                    ),
+                    "preload": False,
+                },
+                "notoSerif300": {
+                    "family": "Daodao Noto Serif",
+                    "file": relative_to_repository(noto_serif_300_output),
+                    "sha256": noto_serif_300_hash,
+                    "bytes": noto_serif_300_output.stat().st_size,
+                    "glyphCodepoints": len(noto_serif_300_codepoints),
+                    "codepoints": codepoint_labels(noto_serif_300_codepoints),
+                    "preload": True,
+                    "trackedSourceAsset": True,
                 },
                 "notoSerifCjk": {
                     "family": "Daodao Noto Serif SC",
@@ -405,6 +549,8 @@ def main() -> None:
                     "bytes": staged_noto_serif_cjk_output.stat().st_size,
                     "sourceSha256": noto_serif_cjk_source_hash,
                     "glyphCodepoints": len(built_noto_serif_cjk_codepoints),
+                    "codepointSet": "cjk",
+                    "preload": False,
                 },
             },
         }
@@ -419,6 +565,7 @@ def main() -> None:
         for staged_output, final_output in (
             (staged_ming_output, ming_output),
             (staged_garamond_output, garamond_output),
+            (staged_serif_supplement_output, serif_supplement_output),
             (staged_noto_serif_cjk_output, noto_serif_cjk_output),
         ):
             staged_output.replace(final_output)
@@ -433,7 +580,9 @@ def main() -> None:
         f"{relative_to_repository(ming_output)} ({ming_output.stat().st_size:,} bytes) "
         "and "
         f"{relative_to_repository(garamond_output)} "
-        f"({garamond_output.stat().st_size:,} bytes), and "
+        f"({garamond_output.stat().st_size:,} bytes), "
+        f"{relative_to_repository(serif_supplement_output)} "
+        f"({serif_supplement_output.stat().st_size:,} bytes), and "
         f"{relative_to_repository(noto_serif_cjk_output)} "
         f"({noto_serif_cjk_output.stat().st_size:,} bytes)"
     )

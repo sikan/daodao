@@ -1,10 +1,11 @@
 # Font assets
 
-The site self-hosts its fonts so the reading experience does not depend on
-fonts installed by Windows, macOS, or iOS. The typography schemes use
-content-specific WOFF2 subsets in this directory. Their much larger upstream
-I.MingCP, EB Garamond, and Noto Serif CJK source files are intentionally not
-committed.
+The site self-hosts enough font coverage for both reading schemes to render
+all current text without an unplanned system-font fallback. The alternate
+scheme may still prefer Apple’s local Songti SC for Chinese by design. The
+typography schemes use content-specific WOFF2 subsets in this directory; their
+much larger upstream I.MingCP, EB Garamond, and Noto Serif CJK source files are
+intentionally not committed.
 
 ## Reading fonts
 
@@ -43,7 +44,10 @@ font when redistributing it.
 
 `daodao-garamond-roman.woff2` is a Latin-focused subset of the EB Garamond
 1.003 variable roman font. It retains the 400–800 weight axis and is published
-under the SIL Open Font License 1.1.
+under the SIL Open Font License 1.1. In addition to the fixed Latin ranges, the
+subset deliberately includes `π` (U+03C0), `→` (U+2192), and the mathematical
+minus `−` (U+2212), which are present in the pinned upstream font and used by
+the current reading text.
 
 - Upstream project: <https://github.com/octaviopardo/EBGaramond12>
 - Distribution source: <https://github.com/google/fonts/tree/main/ofl/ebgaramond>
@@ -52,6 +56,27 @@ under the SIL Open Font License 1.1.
 - Pinned download: <https://raw.githubusercontent.com/google/fonts/f8c1d3d6cc75e30d77130bdcbfbff27e3b6233fe/ofl/ebgaramond/EBGaramond%5Bwght%5D.ttf>
 - Original SHA-256: `ef9512f92f6d579e5dc75af59a5a4b1b8b47d2eda89e00b954d44520e5369027`
 - License: `EB-Garamond-OFL.txt`
+
+### Daodao Serif Supplement Light
+
+`daodao-serif-supplement.woff2` is a deliberately tiny supplement derived
+from the same pinned Noto Serif CJK SC 2.003 Light source documented below. It
+contains exactly five codepoints:
+
+- `ǐ` (U+01D0)
+- `π` (U+03C0)
+- `→` (U+2192)
+- `⇌` (U+21CC)
+- `└` (U+2514)
+
+The default scheme reaches this face only for symbols not supplied by Daodao
+Garamond or Daodao Ming. The alternate scheme uses it before any local system
+font, closing the corresponding gaps in its legacy Noto Serif 300 face. The
+mathematical minus is intentionally absent: it is already covered by both
+Daodao Garamond and the legacy Noto Serif 300 face.
+
+The supplement uses the internal family name `Daodao Serif Supplement` and
+PostScript name `DaodaoSerifSupplement-Light`. It is covered by `OFL.txt`.
 
 ## UI font
 
@@ -110,6 +135,14 @@ The script validates the upstream source hashes, renames the derived fonts,
 writes deterministic WOFF2 subsets, and updates
 `scripts/font-subset-manifest.json`. Font files are staged first, and every
 expected reference is validated before the generated files, manifest, or
-content-hash query strings are replaced. The normal site build checks the
-manifest against all diary and interface text and fails if a newly introduced
-CJK character is absent.
+content-hash query strings are replaced. Before replacement, it also requires
+every generated cmap to equal its configured set and both reading schemes to
+cover all current reading codepoints. The generated files are Daodao Ming,
+Daodao Garamond, Daodao Noto Serif SC, and Daodao Serif Supplement; the
+tracked legacy Noto Serif 300 file is hashed and inventoried but not rebuilt.
+
+The normal site build checks the manifest against all current diary,
+swimming-record, and interface text. It requires an exact CJK set and verifies
+that each reading scheme's self-hosted font union covers every current reading
+codepoint. A new character that would cause an unreviewed system-font fallback
+therefore stops the build instead of silently changing the rendering.

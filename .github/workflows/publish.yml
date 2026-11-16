@@ -46,17 +46,21 @@ jobs:
         run: |
           for site in "$RUNNER_TEMP/public-site" "$RUNNER_TEMP/raw-site"; do
             test -f "$site/daodao.txt"
+            test -f "$site/every-lap-counts.txt"
             test -f "$site/_headers"
             test -f "$site/typography.js"
             test -f "$site/assets/fonts/daodao-garamond-roman.woff2"
             test -f "$site/assets/fonts/daodao-ming-regular.woff2"
+            test -f "$site/assets/fonts/daodao-serif-supplement.woff2"
             test -f "$site/assets/fonts/daodao-noto-serif-sc-light.woff2"
             test -f "$site/assets/fonts/noto-serif-300.ttf"
             test ! -e "$site/daodao.master.txt"
+            test ! -e "$site/every-lap-counts.master.txt"
             test ! -e "$site/redactions.json"
             grep -Fq "X-Robots-Tag: noindex" "$site/_headers"
             grep -Fq "Content-Signal: search=no, ai-input=no, ai-train=no" "$site/robots.txt"
             grep -Fq "Disallow: /daodao.txt" "$site/robots.txt"
+            grep -Fq "Disallow: /every-lap-counts.txt" "$site/robots.txt"
             grep -Fq 'content="noindex, nofollow, noarchive, nosnippet, noimageindex"' "$site/index.html"
             grep -Eq '<script src="\./typography\.js\?v=[0-9a-f]{12}"></script>' "$site/index.html"
             grep -Eq '<link rel="stylesheet" href="\./style\.css\?v=[0-9a-f]{12}">' "$site/index.html"
@@ -64,7 +68,9 @@ jobs:
           done
 
           cmp daodao.master.txt "$RUNNER_TEMP/raw-site/daodao.txt"
+          cmp every-lap-counts.master.txt "$RUNNER_TEMP/raw-site/every-lap-counts.txt"
           ! cmp -s daodao.master.txt "$RUNNER_TEMP/public-site/daodao.txt"
+          ! cmp -s every-lap-counts.master.txt "$RUNNER_TEMP/public-site/every-lap-counts.txt"
 
       - name: Publish generated files to public and raw branches
         id: publish

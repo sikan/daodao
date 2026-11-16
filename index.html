@@ -37,7 +37,34 @@
         >
       </section>
 
-      <div class="order-control" role="group" aria-label="日记排序">
+      <div
+        class="collection-control"
+        role="group"
+        aria-label="选择记录"
+      >
+        <button
+          id="collection-diary"
+          class="collection-control__button is-active"
+          type="button"
+          data-collection="diary"
+          aria-controls="diary"
+          aria-pressed="true"
+        >
+          An Island in Amber
+        </button>
+        <button
+          id="collection-swimming"
+          class="collection-control__button"
+          type="button"
+          data-collection="swimming"
+          aria-controls="diary"
+          aria-pressed="false"
+        >
+          Every Lap Counts
+        </button>
+      </div>
+
+      <div class="order-control" role="group" aria-label="内容排序">
         <button
           class="order-control__button is-active"
           type="button"
@@ -80,7 +107,12 @@
         <ol id="yearRailList" class="year-rail__list"></ol>
       </nav>
 
-      <main id="diary" class="diary" data-nosnippet>
+      <main
+        id="diary"
+        class="diary"
+        aria-label="An Island in Amber"
+        data-nosnippet
+      >
         <section class="entry entry--loading">
           <div class="entry__meta">
             <span class="entry__date">An Island in Amber</span>

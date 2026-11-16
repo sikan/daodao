@@ -1,16 +1,18 @@
 # Updating the Font Subsets
 
-The site uses content-specific Chinese font subsets. When a diary entry or
-interface file introduces a Chinese character that is not already present in
-the subsets, the site build stops with an error similar to:
+The site uses content-specific reading-font subsets. When a diary entry,
+swimming record, or interface file introduces a character that is not covered
+by the reviewed self-hosted fonts for both reading schemes, the site build
+stops with an error similar to:
 
 ```text
 The reading-font subset is stale (U+....). Run scripts/build-fonts.py before publishing.
 ```
 
-This is intentional: it prevents a newly introduced character from silently
-falling back to a different system font. The existing published site remains
-unchanged if the publishing workflow fails.
+This is intentional: it prevents a newly introduced Chinese, Latin, Greek,
+mathematical, arrow, box-drawing, or other reading character from silently
+creating an unreviewed system-font fallback. The existing published site
+remains unchanged if the publishing workflow fails.
 
 You do not need to determine manually whether an entry contains new
 characters. Run the normal site build; update the subsets only if it reports
@@ -23,21 +25,31 @@ both of them:
 
 - `iming-garamond` is the default. It uses the EB Garamond-derived Daodao
   Garamond subset for Latin text and the I.MingCP-derived Daodao Ming subset
-  for Chinese text. The `--garamond` and `--iming` inputs rebuild these fonts.
+  for Chinese text. A tiny Daodao Serif Supplement supplies reviewed gaps.
+  The `--garamond`, `--iming`, and `--noto-serif-cjk` inputs rebuild these
+  fonts.
 - `noto-system` uses the existing Noto Serif files for Latin text. For Chinese
   text, it prefers the locally installed Songti SC on Apple platforms and uses
-  the self-hosted Daodao Noto Serif SC subset as a fallback. The
-  `--noto-serif-cjk` input rebuilds that fallback subset. The existing Latin
-  Noto Serif files and the operating system's Songti SC are not regenerated.
+  the self-hosted Daodao Noto Serif SC subset as a fallback. The same Daodao
+  Serif Supplement closes reviewed gaps before the stack reaches a system
+  font. The `--noto-serif-cjk` input rebuilds both of those derived files. The
+  existing Latin Noto Serif files and the operating system's Songti SC are not
+  regenerated; Noto Serif 300 is nevertheless hashed and included in the
+  coverage manifest.
 
-The `redacted` and `raw` build modes control which diary text is published;
-they are separate from these two typography strategies. Every site build
-validates the font assets needed by both typography strategies.
+The current deliberate coverage additions are documented in
+`assets/fonts/README.md`: Daodao Garamond adds `π`, `→`, and `−`, while the
+supplement contains exactly `ǐ`, `π`, `→`, `⇌`, and `└`.
+
+The `redacted` and `raw` build modes control which diary and swimming-record
+text is published; they are separate from these two typography strategies.
+Every site build validates the font assets needed by both typography
+strategies.
 
 ## Before starting
 
-- Finish the current diary and redaction edits first. Any later addition of a
-  new character may require rebuilding the subsets again.
+- Finish the current diary, swimming-record, and redaction edits first. Any
+  later addition of a new character may require rebuilding the subsets again.
 - Run all commands from the repository root.
 - Python 3, Node.js, `curl`, and network access are required.
 - Do not use the `--accept-different-sources` option. The source-hash checks
@@ -106,12 +118,14 @@ Depending on which characters were added, the expected tracked changes are:
 
 - `assets/fonts/daodao-ming-regular.woff2`
 - `assets/fonts/daodao-noto-serif-sc-light.woff2`
+- `assets/fonts/daodao-serif-supplement.woff2`
 - `scripts/font-subset-manifest.json`
 - `style.css`
 - `typography.js`
 
 The Garamond subset normally remains unchanged when only Chinese characters
-were added.
+were added. The five-codepoint supplement also remains unchanged unless its
+explicit reviewed set is changed.
 
 ## 5. Verify the result
 
@@ -144,9 +158,12 @@ While the server is running, open both typography strategies in a browser:
 - <http://localhost:8000/?typography=noto-system>
 
 Check that the new characters appear correctly and that the surrounding text
-still has the expected appearance. On Apple platforms, `noto-system` normally
-uses the locally installed Songti SC for Chinese and loads the self-hosted
-Daodao Noto Serif SC subset only as needed. Stop the local server with
+still has the expected appearance. The build already proves that the current
+reading codepoints are covered by each scheme's declared self-hosted fonts;
+this browser pass checks the actual CSS routing and visual fit. On Apple
+platforms, `noto-system` normally uses the locally installed Songti SC for
+Chinese and loads the self-hosted Daodao Noto Serif SC subset only as needed.
+Stop the local server with
 Control-C when the check is complete. If port 8000 is already in use, choose
 another port and use the same port in the two URLs.
 
@@ -167,5 +184,5 @@ files. If any intended file is untracked, add it explicitly before committing.
 The full I.MingCP and Noto Serif CJK source fonts are each tens of megabytes.
 The content-specific WOFF2 subsets are much smaller, improving initial page
 loading and mobile data use while keeping typography consistent across
-platforms. The build-time stale-subset check is the safeguard that makes this
-approach reliable.
+platforms. The exact CJK comparison and full reading-scheme coverage checks
+are the safeguards that make this approach reliable.
