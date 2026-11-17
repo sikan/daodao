@@ -663,7 +663,7 @@ node --version
 
 5. 判断是否需要重建
 
-如果 redacted 和 raw 两种模式均成功构建，且没有字体清单、字体哈希、缓存引用、缺失码位或未计划系统回退错误，说明当前精确 CJK 集合和两套正文方案的全文码位覆盖完整，不需要重建。
+如果 redacted 和 raw 两种模式均成功构建，且没有字体清单、字体哈希、缓存引用、缺失码位或未计划系统回退错误，说明当前正文 CJK 与一级常用汉字均包含在计划 CJK 集合中，两套正文方案的全文码位覆盖完整，不需要重建。
 
 如果出现类似错误：
 
@@ -692,9 +692,11 @@ typography.js
 
 脚本还会加入一组基础中文标点。
 
+脚本还会读取 scripts/tongyong-guifan-hanzi-level-1.txt。该文件必须恰好包含按 0001–3500 连续编号、互不重复且位于基本汉字区的《通用规范汉字表》一级字；文件条目数与 SHA-256 必须和字体清单一致。
+
 因此，新增日记、脱敏替换目标、界面文字、中文全角符号、CJK 扩展字符、兼容字符和脚本覆盖范围内的日文假名都可能触发字符集更新。
 
-自动 stale-subset 检查会验证精确 CJK 集合，并验证两个正文方案登记的自托管字体并集覆盖全部当前文字来源中的非控制字符；它不等于承诺覆盖将来任意输入的 Unicode 字符。
+自动 stale-subset 检查会验证当前正文 CJK 与一级字表都是计划 CJK 集合的子集，并验证两个正文方案登记的自托管字体并集覆盖全部当前文字来源中的非控制字符。计划集合可以有意保留当前尚未使用的一级字和历史已审查字符；它不等于承诺覆盖将来任意输入的 Unicode 字符。
 
 Daodao Garamond 保留脚本定义的固定拉丁字符范围，并额外明确收录 π（U+03C0）、→（U+2192）与 −（U+2212）。Daodao Serif Supplement 精确收录 ǐ（U+01D0）、π（U+03C0）、→（U+2192）、⇌（U+21CC）与 └（U+2514）。
 
@@ -804,7 +806,7 @@ SHA-256：7da07efb309a89b156090848aab55d9dc57f15b08387b51184b08b89501a382c
 脚本应完成：
 
 • 验证三个上游字体的 SHA-256；
-• 收集全部文字来源中的正文码位，并从中得到精确 CJK 集合；
+• 收集全部文字来源中的正文码位，并将当前 CJK、一级字表与既有已审查 CJK 取并集，得到单调扩充的计划 CJK 集合；
 • 确认上游字体包含所有所需字形；
 • 在临时暂存目录中生成字体；
 • 生成 WOFF2 子集；
@@ -863,10 +865,11 @@ FONT_KNOWN_LIMITATIONS.md（仅在字符数或已知限制说明需要同步时�
 检查 scripts/font-subset-manifest.json：
 
 • JSON 可以解析；
-• version 为 3；
+• version 为 4；
 • textSources 与 build-fonts.py 中的 TEXT_SOURCES 一致；
-• requiredReadingCodepoints 与当前全部文字来源及基础标点中的非控制字符集合完全相等；
-• cjkCodepoints 包含本轮新增的有效 CJK 码位；
+• commonHanzi.file 指向 scripts/tongyong-guifan-hanzi-level-1.txt，entries 为 3500，sha256 与文件一致；
+• 一级字表文件的编号连续、字符唯一且全部位于基本汉字区；
+• cjkCodepoints 同时包含当前全部所需 CJK、一级字表与此前已经审查并保留的 CJK 码位；
 • cjkCodepoints 无重复且保持排序；
 • ming、garamond、serifSupplement、notoSerif300 和 notoSerifCjk 五项存在；
 • readingSchemes 明确登记 iming-garamond 与 noto-system 的自托管覆盖组合；
@@ -876,7 +879,7 @@ FONT_KNOWN_LIMITATIONS.md（仅在字符数或已知限制说明需要同步时�
 • 三份派生来源的 sourceSha256 与三个固定上游字体一致；
 • 两个中文字体的 glyphCodepoints 与实际结果一致；
 • Garamond、补充字体和旧 Noto Serif 300 的 codepoints、glyphCodepoints 与实际 cmap 一致；
-• 每套 readingSchemes 字体并集覆盖 requiredReadingCodepoints；
+• 每套 readingSchemes 字体并集覆盖独立从当前文字来源计算出的全部所需正文码位；
 • style.css 和 typography.js 的版本参数与字体 SHA-256 前十二位一致。
 
 还必须使用 FontTools 逐一验证三份固定上游字体、四份生成字体和清单登记的旧 Noto Serif 300：
@@ -897,7 +900,7 @@ assets/fonts/daodao-ming-regular.woff2
 assets/fonts/daodao-noto-serif-sc-light.woff2
 assets/fonts/daodao-serif-supplement.woff2
 
-必须独立重新计算当前全部文字来源和基础标点所需的完整 CJK 码位集合，并确认两个中文字体的实际 Unicode cmap 都与该集合完全相等：既不能遗漏任何所需码位，也不能包含任何多余码位。
+必须独立重新计算当前全部文字来源和基础标点所需的完整 CJK 码位集合，并解析一级字表。确认当前所需 CJK 与 3500 个一级字均包含在清单的计划 CJK 集合中；两个中文字体的实际 Unicode cmap 必须与清单计划集合完全相等，不能遗漏清单码位，也不能包含清单之外的码位。
 
 16. 可重复性检查
 
@@ -926,7 +929,7 @@ node scripts/build-site.mjs --mode raw --output "$FONT_WORK/site-raw"
 • style.css 的字体引用存在；
 • typography.js 的预加载引用存在；
 • 每个预加载字体都有相应的 font-face；
-• iming-garamond 与 noto-system 的登记字体并集都覆盖 requiredReadingCodepoints；
+• iming-garamond 与 noto-system 的登记字体并集都覆盖独立计算出的当前全部正文码位；
 • raw/daodao.txt 与 daodao.master.txt 字节级一致；
 • raw/every-lap-counts.txt 与 every-lap-counts.master.txt 字节级一致；
 • redacted 版本实际执行替换；
@@ -1009,11 +1012,11 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 
 现有字符集无需更新时：
 
-已执行 raw 和 redacted 双模式站点构建。两份 CJK 字体子集与当前所需 CJK 集合完全相等；两套正文排版方案的登记自托管字体均覆盖当前全部正文码位；字体文件、清单及缓存引用验证正常，不需要重建字符集。
+已执行 raw 和 redacted 双模式站点构建。当前所需 CJK 与一级字表均完整包含在计划 CJK 集合中，两份中文字体的实际 Unicode cmap 与该计划集合完全相等；两套正文排版方案的登记自托管字体均覆盖当前全部正文码位；字体文件、清单及缓存引用验证正常，不需要重建字符集。
 
 字符集已经重建时：
 
-字符集已使用固定上游字体和固定工具版本重建。Daodao Ming 和 Daodao Noto Serif SC 的实际 Unicode cmap 与完整所需 CJK 集合完全相等，没有遗漏或多余码位；四份生成字体的内部名称与字体结构正确，Garamond 的固定范围加三个补充码位和可变字体表正确，五码位补充字体精确；两套正文方案覆盖全部当前正文码位；两次独立重建逐字节一致；上游哈希、生成字体哈希、字体清单、缓存引用以及 raw 和 redacted 双模式构建均验证通过。
+字符集已使用固定上游字体和固定工具版本重建。当前所需 CJK 与一级字表均完整包含在计划 CJK 集合中；Daodao Ming 和 Daodao Noto Serif SC 的实际 Unicode cmap 与该计划集合完全相等，没有遗漏或额外码位；四份生成字体的内部名称与字体结构正确，Garamond 的固定范围加三个补充码位和可变字体表正确，五码位补充字体精确；两套正文方案覆盖全部当前正文码位；两次独立重建逐字节一致；上游哈希、生成字体哈希、字体清单、缓存引用以及 raw 和 redacted 双模式构建均验证通过。
 
 字符集过期但未获准重建时：
 
@@ -1026,7 +1029,7 @@ FONT_KNOWN_LIMITATIONS.md 是当前字体覆盖瑕疵及补救方案的专门记
 • 当前磁盘正文、脱敏规则和界面文字已保存；
 • 当前 HEAD 已重新确认；
 • raw 和 redacted 两种模式构建成功；
-• 两个中文字体的实际 Unicode cmap 与独立计算出的完整所需 CJK 集合完全相等，没有遗漏或多余码位；
+• 当前所需 CJK 与一级字表均包含在计划 CJK 集合中，两个中文字体的实际 Unicode cmap 与清单登记的计划集合完全相等，没有遗漏或额外码位；
 • 两套正文方案登记的自托管字体并集覆盖独立计算出的全部当前正文码位；
 • 字体文件、清单及缓存引用一致；
 • 四份生成 WOFF2 均可完整解析，内部名称正确，Daodao Garamond 的固定范围加三个补充码位和 fvar 表、Daodao Serif Supplement 的精确五码位均验证通过；

@@ -153,6 +153,47 @@ function parseCodepointLabels(labels, fieldName) {
   return new Set(codepoints);
 }
 
+function parseCommonHanzi(contents, sourcePath) {
+  const codepoints = new Set();
+  let expectedSequence = 1;
+
+  for (const [lineIndex, rawLine] of contents.split(/\r?\n/).entries()) {
+    const line = rawLine.trim();
+
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const match = /^(\d{4}) ([\u4E00-\u9FFF])$/u.exec(line);
+
+    if (!match) {
+      throw new Error(
+        `Invalid common Hanzi entry at ${sourcePath}:${lineIndex + 1}`
+      );
+    }
+
+    const sequence = Number.parseInt(match[1], 10);
+
+    if (sequence !== expectedSequence) {
+      throw new Error(
+        `Unexpected common Hanzi sequence ${match[1]}; ` +
+          `expected ${String(expectedSequence).padStart(4, "0")}`
+      );
+    }
+
+    const codepoint = match[2].codePointAt(0);
+
+    if (codepoints.has(codepoint)) {
+      throw new Error(`Duplicate common Hanzi entry: ${formatCodepoint(codepoint)}`);
+    }
+
+    codepoints.add(codepoint);
+    expectedSequence += 1;
+  }
+
+  return codepoints;
+}
+
 function setDifference(left, right) {
   return new Set([...left].filter((value) => !right.has(value)));
 }
@@ -179,10 +220,13 @@ async function validateFontAssets() {
   const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
 
   if (
-    manifest.version !== 3 ||
+    manifest.version !== 4 ||
     !Array.isArray(manifest.textSources) ||
-    !Array.isArray(manifest.requiredReadingCodepoints) ||
     !Array.isArray(manifest.cjkCodepoints) ||
+    typeof manifest.commonHanzi?.file !== "string" ||
+    !Number.isInteger(manifest.commonHanzi?.entries) ||
+    typeof manifest.commonHanzi?.sha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(manifest.commonHanzi.sha256) ||
     !manifest.readingSchemes ||
     !manifest.fonts?.ming ||
     !manifest.fonts?.garamond ||
@@ -215,44 +259,67 @@ async function validateFontAssets() {
   const requiredCjkCodepoints = new Set(
     [...requiredReadingCodepoints].filter(isCjkCodepoint)
   );
-  const manifestReadingCodepoints = parseCodepointLabels(
-    manifest.requiredReadingCodepoints,
-    "requiredReadingCodepoints"
-  );
   const manifestCjkCodepoints = parseCodepointLabels(
     manifest.cjkCodepoints,
     "cjkCodepoints"
   );
+  const nonCjkManifestCodepoints = new Set(
+    [...manifestCjkCodepoints].filter((codepoint) => !isCjkCodepoint(codepoint))
+  );
 
-  const missingReadingCodepoints = setDifference(
-    requiredReadingCodepoints,
-    manifestReadingCodepoints
-  );
-  const staleReadingCodepoints = setDifference(
-    manifestReadingCodepoints,
-    requiredReadingCodepoints
-  );
-  const missingCjkCodepoints = setDifference(
-    requiredCjkCodepoints,
-    manifestCjkCodepoints
-  );
-  const staleCjkCodepoints = setDifference(
-    manifestCjkCodepoints,
-    requiredCjkCodepoints
+  if (nonCjkManifestCodepoints.size > 0) {
+    throw new Error(
+      `cjkCodepoints contains non-CJK values ` +
+        `(${describeCodepoints(nonCjkManifestCodepoints)})`
+    );
+  }
+
+  const commonHanziPath = resolve(repositoryRoot, manifest.commonHanzi.file);
+
+  if (!isInside(scriptDirectory, commonHanziPath)) {
+    throw new Error(
+      `Common Hanzi source escapes scripts: ${manifest.commonHanzi.file}`
+    );
+  }
+
+  const commonHanziContents = await readFile(commonHanziPath);
+
+  if (sha256(commonHanziContents) !== manifest.commonHanzi.sha256) {
+    throw new Error(
+      `Common Hanzi source does not match its manifest: ` +
+        `${manifest.commonHanzi.file}. Run scripts/build-fonts.py before publishing.`
+    );
+  }
+
+  const commonHanziCodepoints = parseCommonHanzi(
+    commonHanziContents.toString("utf8"),
+    manifest.commonHanzi.file
   );
 
   if (
-    missingReadingCodepoints.size > 0 ||
-    staleReadingCodepoints.size > 0 ||
-    missingCjkCodepoints.size > 0 ||
-    staleCjkCodepoints.size > 0
+    commonHanziCodepoints.size !== 3500 ||
+    manifest.commonHanzi.entries !== commonHanziCodepoints.size
+  ) {
+    throw new Error("The common Hanzi source must contain exactly 3500 entries");
+  }
+
+  const missingRequiredCjkCodepoints = setDifference(
+    requiredCjkCodepoints,
+    manifestCjkCodepoints
+  );
+  const missingCommonHanziCodepoints = setDifference(
+    commonHanziCodepoints,
+    manifestCjkCodepoints
+  );
+
+  if (
+    missingRequiredCjkCodepoints.size > 0 ||
+    missingCommonHanziCodepoints.size > 0
   ) {
     const labels = describeCodepoints(
       new Set([
-        ...missingReadingCodepoints,
-        ...staleReadingCodepoints,
-        ...missingCjkCodepoints,
-        ...staleCjkCodepoints,
+        ...missingRequiredCjkCodepoints,
+        ...missingCommonHanziCodepoints,
       ])
     );
     throw new Error(

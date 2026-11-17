@@ -1,15 +1,18 @@
 # Updating the Font Subsets
 
-The site uses content-specific reading-font subsets. When a diary entry,
-swimming record, or interface file introduces a character that is not covered
-by the reviewed self-hosted fonts for both reading schemes, the site build
-stops with an error similar to:
+The site uses planned-coverage reading-font subsets. The Chinese subsets keep
+all previously reviewed CJK codepoints and also include the 3,500 first-level
+characters from the Table of General Standard Chinese Characters. When a
+diary entry, swimming record, or interface file introduces a character that
+is not covered by the reviewed self-hosted fonts for both reading schemes,
+the site build stops with an error similar to:
 
 ```text
 The reading-font subset is stale (U+....). Run scripts/build-fonts.py before publishing.
 ```
 
-This is intentional: it prevents a newly introduced Chinese, Latin, Greek,
+This is intentional: it prevents a newly introduced out-of-plan Chinese,
+Latin, Greek,
 mathematical, arrow, box-drawing, or other reading character from silently
 creating an unreviewed system-font fallback. The existing published site
 remains unchanged if the publishing workflow fails.
@@ -17,6 +20,21 @@ remains unchanged if the publishing workflow fails.
 You do not need to determine manually whether an entry contains new
 characters. Run the normal site build; update the subsets only if it reports
 that they are stale.
+
+## Planned Chinese coverage
+
+`scripts/tongyong-guifan-hanzi-level-1.txt` is the reviewed, numbered source
+for the 3,500 first-level common Han characters. The build validates its
+sequence, uniqueness, Basic CJK codepoint range, entry count, and SHA-256.
+The Chinese font plan is monotonic: rebuilding takes the union of the existing
+reviewed CJK set, this common-Hanzi list, and all CJK codepoints currently used
+by the site. Unused reviewed characters are intentionally retained. The site
+build therefore checks containment rather than requiring the current text and
+font cmap to be identical.
+
+The initial common-Hanzi expansion retained all 2,916 previously covered CJK
+codepoints. Of the 3,500 first-level characters, 2,652 were already present
+and 848 were added, producing a 3,764-codepoint planned CJK set.
 
 ## Typography strategies covered
 
@@ -48,8 +66,9 @@ strategies.
 
 ## Before starting
 
-- Finish the current diary, swimming-record, and redaction edits first. Any
-  later addition of a new character may require rebuilding the subsets again.
+- Finish the current diary, swimming-record, and redaction edits first. A later
+  first-level Han character is already covered; other new characters may still
+  require rebuilding the subsets.
 - Run all commands from the repository root.
 - Python 3, Node.js, `curl`, and network access are required.
 - Do not use the `--accept-different-sources` option. The source-hash checks
@@ -182,7 +201,8 @@ files. If any intended file is untracked, add it explicitly before committing.
 ## Why not ship the complete Chinese fonts?
 
 The full I.MingCP and Noto Serif CJK source fonts are each tens of megabytes.
-The content-specific WOFF2 subsets are much smaller, improving initial page
+The planned-coverage WOFF2 subsets are much smaller, improving initial page
 loading and mobile data use while keeping typography consistent across
-platforms. The exact CJK comparison and full reading-scheme coverage checks
-are the safeguards that make this approach reliable.
+platforms. The exact planned-CJK comparison, first-level source validation,
+and full reading-scheme coverage checks are the safeguards that make this
+approach reliable.

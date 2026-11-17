@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import stat
 import tempfile
 import unicodedata
@@ -32,6 +33,8 @@ TEXT_SOURCES = (
     "app.js",
     "typography.js",
 )
+COMMON_HANZI_SOURCE = "scripts/tongyong-guifan-hanzi-level-1.txt"
+COMMON_HANZI_COUNT = 3500
 CJK_SEED = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝"
 GARAMOND_EXTRA_CODEPOINTS = frozenset((0x03C0, 0x2192, 0x2212))
 SERIF_SUPPLEMENT_CODEPOINTS = frozenset(
@@ -141,12 +144,93 @@ def is_in_ranges(codepoint: int, ranges: Iterable[tuple[int, int]]) -> bool:
     return any(start <= codepoint <= end for start, end in ranges)
 
 
-def collect_cjk_codepoints() -> set[int]:
+def collect_required_cjk_codepoints(
+    required_reading_codepoints: set[int],
+) -> set[int]:
     return {
         codepoint
-        for codepoint in collect_required_reading_codepoints()
+        for codepoint in required_reading_codepoints
         if is_in_ranges(codepoint, CJK_RANGES)
     }
+
+
+def collect_common_hanzi_codepoints() -> set[int]:
+    source_path = REPOSITORY_ROOT / COMMON_HANZI_SOURCE
+    entries: list[int] = []
+    pattern = re.compile(r"^(\d{4}) ([\u4E00-\u9FFF])$")
+
+    for line_number, raw_line in enumerate(
+        source_path.read_text(encoding="utf-8").splitlines(),
+        start=1,
+    ):
+        line = raw_line.strip()
+
+        if not line or line.startswith("#"):
+            continue
+
+        match = pattern.fullmatch(line)
+
+        if not match:
+            raise ValueError(
+                f"Invalid common Hanzi entry at {COMMON_HANZI_SOURCE}:"
+                f"{line_number}: {raw_line!r}"
+            )
+
+        expected_sequence = len(entries) + 1
+        sequence = int(match.group(1))
+
+        if sequence != expected_sequence:
+            raise ValueError(
+                f"Unexpected common Hanzi sequence {sequence:04d}; "
+                f"expected {expected_sequence:04d}"
+            )
+
+        entries.append(ord(match.group(2)))
+
+    if len(entries) != COMMON_HANZI_COUNT:
+        raise ValueError(
+            f"Expected {COMMON_HANZI_COUNT} common Hanzi entries; "
+            f"found {len(entries)}"
+        )
+
+    if len(set(entries)) != len(entries):
+        raise ValueError("Common Hanzi entries must be unique")
+
+    return set(entries)
+
+
+def collect_existing_cjk_codepoints() -> set[int]:
+    manifest_path = REPOSITORY_ROOT / "scripts" / "font-subset-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    labels = manifest.get("cjkCodepoints")
+
+    if not isinstance(labels, list):
+        raise ValueError("Existing font manifest has no cjkCodepoints array")
+
+    codepoints: list[int] = []
+
+    for label in labels:
+        if not isinstance(label, str) or not re.fullmatch(
+            r"U\+[0-9A-F]{4,6}", label
+        ):
+            raise ValueError(f"Invalid existing CJK codepoint label: {label!r}")
+
+        codepoints.append(int(label[2:], 16))
+
+    if codepoints != sorted(set(codepoints)):
+        raise ValueError("Existing cjkCodepoints must be unique and sorted")
+
+    outside_cjk_ranges = {
+        codepoint
+        for codepoint in codepoints
+        if not is_in_ranges(codepoint, CJK_RANGES)
+    }
+
+    if outside_cjk_ranges:
+        labels = ", ".join(codepoint_labels(outside_cjk_ranges)[:12])
+        raise ValueError(f"Existing cjkCodepoints contain non-CJK values: {labels}")
+
+    return set(codepoints)
 
 
 def collect_required_reading_codepoints() -> set[int]:
@@ -298,6 +382,28 @@ def prepare_font_revision_updates(
     return updates
 
 
+def replace_binary_atomically(source: Path, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
+
+    with source.open("rb") as source_file, tempfile.NamedTemporaryFile(
+        mode="wb",
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        delete=False,
+    ) as temporary_file:
+        shutil.copyfileobj(source_file, temporary_file)
+        temporary_file.flush()
+        os.fsync(temporary_file.fileno())
+        temporary_path = Path(temporary_file.name)
+
+    try:
+        temporary_path.chmod(mode)
+        temporary_path.replace(path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+
+
 def write_text_atomically(path: Path, contents: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
@@ -341,7 +447,16 @@ def main() -> None:
     )
 
     required_reading_codepoints = collect_required_reading_codepoints()
-    cjk_codepoints = collect_cjk_codepoints()
+    required_cjk_codepoints = collect_required_cjk_codepoints(
+        required_reading_codepoints
+    )
+    common_hanzi_codepoints = collect_common_hanzi_codepoints()
+    existing_cjk_codepoints = collect_existing_cjk_codepoints()
+    cjk_codepoints = (
+        required_cjk_codepoints
+        | common_hanzi_codepoints
+        | existing_cjk_codepoints
+    )
     garamond_source = TTFont(arguments.garamond, recalcTimestamp=False)
     garamond_source_codepoints = unicode_cmap(garamond_source)
     garamond_codepoints = (
@@ -486,12 +601,15 @@ def main() -> None:
             noto_serif_300_output.name: noto_serif_300_hash,
         }
         revision_updates = prepare_font_revision_updates(font_hashes)
+        common_hanzi_path = REPOSITORY_ROOT / COMMON_HANZI_SOURCE
         manifest = {
-            "version": 3,
+            "version": 4,
             "textSources": list(TEXT_SOURCES),
-            "requiredReadingCodepoints": codepoint_labels(
-                required_reading_codepoints
-            ),
+            "commonHanzi": {
+                "file": COMMON_HANZI_SOURCE,
+                "entries": len(common_hanzi_codepoints),
+                "sha256": sha256(common_hanzi_path),
+            },
             "cjkCodepoints": codepoint_labels(cjk_codepoints),
             "readingSchemes": {
                 scheme: list(font_keys)
@@ -568,7 +686,7 @@ def main() -> None:
             (staged_serif_supplement_output, serif_supplement_output),
             (staged_noto_serif_cjk_output, noto_serif_cjk_output),
         ):
-            staged_output.replace(final_output)
+            replace_binary_atomically(staged_output, final_output)
 
         write_text_atomically(manifest_path, manifest_contents)
 

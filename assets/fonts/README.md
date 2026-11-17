@@ -3,7 +3,7 @@
 The site self-hosts enough font coverage for both reading schemes to render
 all current text without an unplanned system-font fallback. The alternate
 scheme may still prefer Apple’s local Songti SC for Chinese by design. The
-typography schemes use content-specific WOFF2 subsets in this directory; their
+typography schemes use planned-coverage WOFF2 subsets in this directory; their
 much larger upstream I.MingCP, EB Garamond, and Noto Serif CJK source files are
 intentionally not committed.
 
@@ -11,7 +11,7 @@ intentionally not committed.
 
 ### Daodao Ming Regular
 
-`daodao-ming-regular.woff2` is a content-specific subset derived from
+`daodao-ming-regular.woff2` is a planned-coverage subset derived from
 I.MingCP 8.10. I.MingCP uses centered full-width punctuation and is published
 under the IPA Font License Agreement v1.0.
 
@@ -91,7 +91,7 @@ family for the `noto-system` typography scheme. These files are covered by
 
 ### Daodao Noto Serif SC Light
 
-`daodao-noto-serif-sc-light.woff2` is a content-specific Chinese subset of
+`daodao-noto-serif-sc-light.woff2` is a planned-coverage Chinese subset of
 Noto Serif CJK SC 2.003 Light. It supplies the CJK glyphs missing from the
 legacy Latin-only Noto Serif files, so the alternate scheme remains serif on
 iOS and other platforms without relying on locally installed fonts.
@@ -142,7 +142,13 @@ Daodao Garamond, Daodao Noto Serif SC, and Daodao Serif Supplement; the
 tracked legacy Noto Serif 300 file is hashed and inventoried but not rebuilt.
 
 The normal site build checks the manifest against all current diary,
-swimming-record, and interface text. It requires an exact CJK set and verifies
-that each reading scheme's self-hosted font union covers every current reading
-codepoint. A new character that would cause an unreviewed system-font fallback
-therefore stops the build instead of silently changing the rendering.
+swimming-record, and interface text. The two Chinese subsets exactly match a
+reviewed, monotonic coverage set: all previously covered CJK codepoints plus
+the 3,500 first-level characters from the Table of General Standard Chinese
+Characters. The source list is stored in
+`scripts/tongyong-guifan-hanzi-level-1.txt`, and its entry count and SHA-256
+are recorded in the manifest. Each reading scheme's self-hosted font union
+must still cover every current reading codepoint. A first-level Han character
+can therefore be added to the text without rebuilding the fonts, while a new
+character that would cause an unreviewed system-font fallback still stops the
+build instead of silently changing the rendering.
