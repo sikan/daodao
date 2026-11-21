@@ -33,8 +33,20 @@ TEXT_SOURCES = (
     "app.js",
     "typography.js",
 )
-COMMON_HANZI_SOURCE = "scripts/tongyong-guifan-hanzi-level-1.txt"
-COMMON_HANZI_COUNT = 3500
+STANDARD_HANZI_SOURCES = (
+    {
+        "level": 1,
+        "file": "scripts/tongyong-guifan-hanzi-level-1.txt",
+        "sequence_start": 1,
+        "entries": 3500,
+    },
+    {
+        "level": 2,
+        "file": "scripts/tongyong-guifan-hanzi-level-2.txt",
+        "sequence_start": 3501,
+        "entries": 3000,
+    },
+)
 CJK_SEED = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝"
 GARAMOND_EXTRA_CODEPOINTS = frozenset((0x03C0, 0x2192, 0x2212))
 SERIF_SUPPLEMENT_CODEPOINTS = frozenset(
@@ -82,6 +94,14 @@ CJK_RANGES = (
     (0xFE10, 0xFE1F),  # Vertical forms.
     (0xFE30, 0xFE4F),  # CJK compatibility forms.
     (0xFF00, 0xFFEF),  # Halfwidth and fullwidth forms.
+    (0x20000, 0x2FA1F),  # CJK extensions and compatibility supplement.
+    (0x2EBF0, 0x2EE5F),  # CJK Unified Ideographs Extension I.
+    (0x30000, 0x323AF),  # CJK Unified Ideographs Extensions G and H.
+)
+
+HANZI_RANGES = (
+    (0x3400, 0x4DBF),  # CJK Unified Ideographs Extension A.
+    (0x4E00, 0x9FFF),  # CJK Unified Ideographs.
     (0x20000, 0x2FA1F),  # CJK extensions and compatibility supplement.
     (0x2EBF0, 0x2EE5F),  # CJK Unified Ideographs Extension I.
     (0x30000, 0x323AF),  # CJK Unified Ideographs Extensions G and H.
@@ -154,10 +174,13 @@ def collect_required_cjk_codepoints(
     }
 
 
-def collect_common_hanzi_codepoints() -> set[int]:
-    source_path = REPOSITORY_ROOT / COMMON_HANZI_SOURCE
+def collect_standard_hanzi_source(source: dict[str, int | str]) -> list[int]:
+    source_file = str(source["file"])
+    source_path = REPOSITORY_ROOT / source_file
+    sequence_start = int(source["sequence_start"])
+    expected_entries = int(source["entries"])
     entries: list[int] = []
-    pattern = re.compile(r"^(\d{4}) ([\u4E00-\u9FFF])$")
+    pattern = re.compile(r"^(\d{4}) (.)$")
 
     for line_number, raw_line in enumerate(
         source_path.read_text(encoding="utf-8").splitlines(),
@@ -172,31 +195,54 @@ def collect_common_hanzi_codepoints() -> set[int]:
 
         if not match:
             raise ValueError(
-                f"Invalid common Hanzi entry at {COMMON_HANZI_SOURCE}:"
+                f"Invalid standard Hanzi entry at {source_file}:"
                 f"{line_number}: {raw_line!r}"
             )
 
-        expected_sequence = len(entries) + 1
+        expected_sequence = sequence_start + len(entries)
         sequence = int(match.group(1))
 
         if sequence != expected_sequence:
             raise ValueError(
-                f"Unexpected common Hanzi sequence {sequence:04d}; "
+                f"Unexpected standard Hanzi sequence {sequence:04d}; "
                 f"expected {expected_sequence:04d}"
             )
 
-        entries.append(ord(match.group(2)))
+        codepoint = ord(match.group(2))
 
-    if len(entries) != COMMON_HANZI_COUNT:
+        if not is_in_ranges(codepoint, HANZI_RANGES):
+            raise ValueError(
+                f"Standard Hanzi entry is not a unified ideograph at "
+                f"{source_file}:{line_number}: U+{codepoint:04X}"
+            )
+
+        entries.append(codepoint)
+
+    if len(entries) != expected_entries:
         raise ValueError(
-            f"Expected {COMMON_HANZI_COUNT} common Hanzi entries; "
+            f"Expected {expected_entries} standard Hanzi entries in "
+            f"{source_file}; "
             f"found {len(entries)}"
         )
 
     if len(set(entries)) != len(entries):
-        raise ValueError("Common Hanzi entries must be unique")
+        raise ValueError(
+            f"Standard Hanzi entries must be unique in {source_file}"
+        )
 
-    return set(entries)
+    return entries
+
+
+def collect_standard_hanzi_codepoints() -> set[int]:
+    all_entries: list[int] = []
+
+    for source in STANDARD_HANZI_SOURCES:
+        all_entries.extend(collect_standard_hanzi_source(source))
+
+    if len(set(all_entries)) != len(all_entries):
+        raise ValueError("Standard Hanzi entries must be unique across levels")
+
+    return set(all_entries)
 
 
 def collect_existing_cjk_codepoints() -> set[int]:
@@ -450,11 +496,11 @@ def main() -> None:
     required_cjk_codepoints = collect_required_cjk_codepoints(
         required_reading_codepoints
     )
-    common_hanzi_codepoints = collect_common_hanzi_codepoints()
+    standard_hanzi_codepoints = collect_standard_hanzi_codepoints()
     existing_cjk_codepoints = collect_existing_cjk_codepoints()
     cjk_codepoints = (
         required_cjk_codepoints
-        | common_hanzi_codepoints
+        | standard_hanzi_codepoints
         | existing_cjk_codepoints
     )
     garamond_source = TTFont(arguments.garamond, recalcTimestamp=False)
@@ -601,15 +647,19 @@ def main() -> None:
             noto_serif_300_output.name: noto_serif_300_hash,
         }
         revision_updates = prepare_font_revision_updates(font_hashes)
-        common_hanzi_path = REPOSITORY_ROOT / COMMON_HANZI_SOURCE
         manifest = {
-            "version": 4,
+            "version": 5,
             "textSources": list(TEXT_SOURCES),
-            "commonHanzi": {
-                "file": COMMON_HANZI_SOURCE,
-                "entries": len(common_hanzi_codepoints),
-                "sha256": sha256(common_hanzi_path),
-            },
+            "standardHanzi": [
+                {
+                    "level": source["level"],
+                    "file": source["file"],
+                    "sequenceStart": source["sequence_start"],
+                    "entries": source["entries"],
+                    "sha256": sha256(REPOSITORY_ROOT / str(source["file"])),
+                }
+                for source in STANDARD_HANZI_SOURCES
+            ],
             "cjkCodepoints": codepoint_labels(cjk_codepoints),
             "readingSchemes": {
                 scheme: list(font_keys)

@@ -38,6 +38,27 @@ const cjkUnicodeRanges = [
   [0x30000, 0x323af],
 ];
 const cjkSeed = "，。！？：；、‧·—…“”‘’（）《》〈〉【】〔〕［］｛｝";
+const standardHanziRequirements = [
+  {
+    level: 1,
+    file: "scripts/tongyong-guifan-hanzi-level-1.txt",
+    sequenceStart: 1,
+    entries: 3500,
+  },
+  {
+    level: 2,
+    file: "scripts/tongyong-guifan-hanzi-level-2.txt",
+    sequenceStart: 3501,
+    entries: 3000,
+  },
+];
+const hanziUnicodeRanges = [
+  [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff],
+  [0x20000, 0x2fa1f],
+  [0x2ebf0, 0x2ee5f],
+  [0x30000, 0x323af],
+];
 
 function parseOptions(argumentsList) {
   const options = {
@@ -123,6 +144,13 @@ function isCjkCodepoint(codepoint) {
   );
 }
 
+function isHanziCodepoint(codepoint) {
+  return hanziUnicodeRanges.some(
+    ([rangeStart, rangeEnd]) =>
+      codepoint >= rangeStart && codepoint <= rangeEnd
+  );
+}
+
 function sha256(contents) {
   return createHash("sha256").update(contents).digest("hex");
 }
@@ -153,9 +181,9 @@ function parseCodepointLabels(labels, fieldName) {
   return new Set(codepoints);
 }
 
-function parseCommonHanzi(contents, sourcePath) {
+function parseStandardHanzi(contents, sourcePath, sequenceStart) {
   const codepoints = new Set();
-  let expectedSequence = 1;
+  let expectedSequence = sequenceStart;
 
   for (const [lineIndex, rawLine] of contents.split(/\r?\n/).entries()) {
     const line = rawLine.trim();
@@ -164,11 +192,11 @@ function parseCommonHanzi(contents, sourcePath) {
       continue;
     }
 
-    const match = /^(\d{4}) ([\u4E00-\u9FFF])$/u.exec(line);
+    const match = /^(\d{4}) (.)$/u.exec(line);
 
     if (!match) {
       throw new Error(
-        `Invalid common Hanzi entry at ${sourcePath}:${lineIndex + 1}`
+        `Invalid standard Hanzi entry at ${sourcePath}:${lineIndex + 1}`
       );
     }
 
@@ -183,8 +211,18 @@ function parseCommonHanzi(contents, sourcePath) {
 
     const codepoint = match[2].codePointAt(0);
 
+    if (!isHanziCodepoint(codepoint)) {
+      throw new Error(
+        `Standard Hanzi entry is not a unified ideograph at ` +
+          `${sourcePath}:${lineIndex + 1}: ${formatCodepoint(codepoint)}`
+      );
+    }
+
     if (codepoints.has(codepoint)) {
-      throw new Error(`Duplicate common Hanzi entry: ${formatCodepoint(codepoint)}`);
+      throw new Error(
+        `Duplicate standard Hanzi entry in ${sourcePath}: ` +
+          formatCodepoint(codepoint)
+      );
     }
 
     codepoints.add(codepoint);
@@ -220,13 +258,11 @@ async function validateFontAssets() {
   const manifest = JSON.parse(await readFile(fontManifestPath, "utf8"));
 
   if (
-    manifest.version !== 4 ||
+    manifest.version !== 5 ||
     !Array.isArray(manifest.textSources) ||
     !Array.isArray(manifest.cjkCodepoints) ||
-    typeof manifest.commonHanzi?.file !== "string" ||
-    !Number.isInteger(manifest.commonHanzi?.entries) ||
-    typeof manifest.commonHanzi?.sha256 !== "string" ||
-    !/^[0-9a-f]{64}$/.test(manifest.commonHanzi.sha256) ||
+    !Array.isArray(manifest.standardHanzi) ||
+    manifest.standardHanzi.length !== standardHanziRequirements.length ||
     !manifest.readingSchemes ||
     !manifest.fonts?.ming ||
     !manifest.fonts?.garamond ||
@@ -274,52 +310,82 @@ async function validateFontAssets() {
     );
   }
 
-  const commonHanziPath = resolve(repositoryRoot, manifest.commonHanzi.file);
+  const standardHanziCodepoints = new Set();
 
-  if (!isInside(scriptDirectory, commonHanziPath)) {
-    throw new Error(
-      `Common Hanzi source escapes scripts: ${manifest.commonHanzi.file}`
+  for (const [index, requirement] of standardHanziRequirements.entries()) {
+    const source = manifest.standardHanzi[index];
+
+    if (
+      source?.level !== requirement.level ||
+      source?.file !== requirement.file ||
+      source?.sequenceStart !== requirement.sequenceStart ||
+      source?.entries !== requirement.entries ||
+      typeof source?.file !== "string" ||
+      typeof source?.sha256 !== "string" ||
+      !/^[0-9a-f]{64}$/.test(source.sha256)
+    ) {
+      throw new Error(
+        `Invalid level-${requirement.level} standard Hanzi manifest entry`
+      );
+    }
+
+    const sourcePath = resolve(repositoryRoot, source.file);
+
+    if (!isInside(scriptDirectory, sourcePath)) {
+      throw new Error(`Standard Hanzi source escapes scripts: ${source.file}`);
+    }
+
+    const contents = await readFile(sourcePath);
+
+    if (sha256(contents) !== source.sha256) {
+      throw new Error(
+        `Standard Hanzi source does not match its manifest: ${source.file}. ` +
+          "Run scripts/build-fonts.py before publishing."
+      );
+    }
+
+    const sourceCodepoints = parseStandardHanzi(
+      contents.toString("utf8"),
+      source.file,
+      source.sequenceStart
     );
-  }
 
-  const commonHanziContents = await readFile(commonHanziPath);
+    if (sourceCodepoints.size !== source.entries) {
+      throw new Error(
+        `The level-${source.level} standard Hanzi source must contain ` +
+          `exactly ${source.entries} entries`
+      );
+    }
 
-  if (sha256(commonHanziContents) !== manifest.commonHanzi.sha256) {
-    throw new Error(
-      `Common Hanzi source does not match its manifest: ` +
-        `${manifest.commonHanzi.file}. Run scripts/build-fonts.py before publishing.`
-    );
-  }
+    for (const codepoint of sourceCodepoints) {
+      if (standardHanziCodepoints.has(codepoint)) {
+        throw new Error(
+          `Duplicate standard Hanzi entry across levels: ` +
+            formatCodepoint(codepoint)
+        );
+      }
 
-  const commonHanziCodepoints = parseCommonHanzi(
-    commonHanziContents.toString("utf8"),
-    manifest.commonHanzi.file
-  );
-
-  if (
-    commonHanziCodepoints.size !== 3500 ||
-    manifest.commonHanzi.entries !== commonHanziCodepoints.size
-  ) {
-    throw new Error("The common Hanzi source must contain exactly 3500 entries");
+      standardHanziCodepoints.add(codepoint);
+    }
   }
 
   const missingRequiredCjkCodepoints = setDifference(
     requiredCjkCodepoints,
     manifestCjkCodepoints
   );
-  const missingCommonHanziCodepoints = setDifference(
-    commonHanziCodepoints,
+  const missingStandardHanziCodepoints = setDifference(
+    standardHanziCodepoints,
     manifestCjkCodepoints
   );
 
   if (
     missingRequiredCjkCodepoints.size > 0 ||
-    missingCommonHanziCodepoints.size > 0
+    missingStandardHanziCodepoints.size > 0
   ) {
     const labels = describeCodepoints(
       new Set([
         ...missingRequiredCjkCodepoints,
-        ...missingCommonHanziCodepoints,
+        ...missingStandardHanziCodepoints,
       ])
     );
     throw new Error(

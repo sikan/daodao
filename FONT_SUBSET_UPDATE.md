@@ -1,9 +1,9 @@
 # Updating the Font Subsets
 
 The site uses planned-coverage reading-font subsets. The Chinese subsets keep
-all previously reviewed CJK codepoints and also include the 3,500 first-level
-characters from the Table of General Standard Chinese Characters. When a
-diary entry, swimming record, or interface file introduces a character that
+all previously reviewed CJK codepoints and also include all 6,500 first- and
+second-level characters from the Table of General Standard Chinese Characters.
+When a diary entry, swimming record, or interface file introduces a character that
 is not covered by the reviewed self-hosted fonts for both reading schemes,
 the site build stops with an error similar to:
 
@@ -12,8 +12,7 @@ The reading-font subset is stale (U+....). Run scripts/build-fonts.py before pub
 ```
 
 This is intentional: it prevents a newly introduced out-of-plan Chinese,
-Latin, Greek,
-mathematical, arrow, box-drawing, or other reading character from silently
+Latin, Greek, mathematical, arrow, box-drawing, or other reading character from silently
 creating an unreviewed system-font fallback. The existing published site
 remains unchanged if the publishing workflow fails.
 
@@ -23,18 +22,33 @@ that they are stale.
 
 ## Planned Chinese coverage
 
-`scripts/tongyong-guifan-hanzi-level-1.txt` is the reviewed, numbered source
-for the 3,500 first-level common Han characters. The build validates its
-sequence, uniqueness, Basic CJK codepoint range, entry count, and SHA-256.
+`scripts/tongyong-guifan-hanzi-level-1.txt` and
+`scripts/tongyong-guifan-hanzi-level-2.txt` are the reviewed, numbered sources
+for the 3,500 first-level and 3,000 second-level Han characters. The build
+validates each file's official sequence range, uniqueness, unified-ideograph
+codepoint range, entry count, and SHA-256; it also rejects duplicates across
+the two levels. The second-level table legitimately includes Extension A and
+supplementary-plane ideographs, so it is not restricted to the Basic CJK
+block.
+
+The Wikisource transcription displays the superscript note labels `b1`–`b4`
+after entries 5401 `皙`, 5903 `瞋`, 5910 `噘`, and 6333 `蹚`. Those labels are
+annotations rather than characters in the table and are intentionally absent
+from the numbered source file.
+
 The Chinese font plan is monotonic: rebuilding takes the union of the existing
-reviewed CJK set, this common-Hanzi list, and all CJK codepoints currently used
-by the site. Unused reviewed characters are intentionally retained. The site
-build therefore checks containment rather than requiring the current text and
-font cmap to be identical.
+reviewed CJK set, both standard-Hanzi lists, and all CJK codepoints currently
+used by the site. Unused reviewed characters are intentionally retained. The
+site build therefore checks containment rather than requiring the current text
+and font cmap to be identical.
 
 The initial common-Hanzi expansion retained all 2,916 previously covered CJK
 codepoints. Of the 3,500 first-level characters, 2,652 were already present
 and 848 were added, producing a 3,764-codepoint planned CJK set.
+
+Before the second-level expansion, the reviewed plan contained 3,765 CJK
+codepoints. Of the 3,000 second-level characters, 216 were already present and
+2,784 were added, producing the current 6,549-codepoint planned CJK set.
 
 ## Typography strategies covered
 
@@ -67,8 +81,8 @@ strategies.
 ## Before starting
 
 - Finish the current diary, swimming-record, and redaction edits first. A later
-  first-level Han character is already covered; other new characters may still
-  require rebuilding the subsets.
+  first- or second-level Han character is already covered; other new characters
+  may still require rebuilding the subsets.
 - Run all commands from the repository root.
 - Python 3, Node.js, `curl`, and network access are required.
 - Do not use the `--accept-different-sources` option. The source-hash checks
@@ -203,6 +217,6 @@ files. If any intended file is untracked, add it explicitly before committing.
 The full I.MingCP and Noto Serif CJK source fonts are each tens of megabytes.
 The planned-coverage WOFF2 subsets are much smaller, improving initial page
 loading and mobile data use while keeping typography consistent across
-platforms. The exact planned-CJK comparison, first-level source validation,
-and full reading-scheme coverage checks are the safeguards that make this
-approach reliable.
+platforms. The exact planned-CJK comparison, first- and second-level source
+validation, and full reading-scheme coverage checks are the safeguards that
+make this approach reliable.

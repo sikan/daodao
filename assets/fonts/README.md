@@ -144,11 +144,13 @@ tracked legacy Noto Serif 300 file is hashed and inventoried but not rebuilt.
 The normal site build checks the manifest against all current diary,
 swimming-record, and interface text. The two Chinese subsets exactly match a
 reviewed, monotonic coverage set: all previously covered CJK codepoints plus
-the 3,500 first-level characters from the Table of General Standard Chinese
-Characters. The source list is stored in
-`scripts/tongyong-guifan-hanzi-level-1.txt`, and its entry count and SHA-256
-are recorded in the manifest. Each reading scheme's self-hosted font union
-must still cover every current reading codepoint. A first-level Han character
-can therefore be added to the text without rebuilding the fonts, while a new
-character that would cause an unreviewed system-font fallback still stops the
-build instead of silently changing the rendering.
+all 6,500 first- and second-level characters from the Table of General
+Standard Chinese Characters. The numbered source lists are stored in
+`scripts/tongyong-guifan-hanzi-level-1.txt` and
+`scripts/tongyong-guifan-hanzi-level-2.txt`; their sequence ranges, entry
+counts, uniqueness, unified-ideograph ranges, cross-level uniqueness, and
+SHA-256 hashes are validated. Each reading scheme's self-hosted font union
+must still cover every current reading codepoint. A first- or second-level Han
+character can therefore be added to the text without rebuilding the fonts,
+while a new character that would cause an unreviewed system-font fallback
+still stops the build instead of silently changing the rendering.
