@@ -138,7 +138,7 @@ function finalizeSwimmingEntry(current) {
   let cursor = 0;
   let time = "";
   let session = "";
-  let coach = "";
+  const coaches = [];
   let competition = "";
   let competitionName = "";
   let pool = "";
@@ -149,8 +149,8 @@ function finalizeSwimmingEntry(current) {
     session = lines[cursor] || "";
     cursor += 1;
 
-    if ((lines[cursor] || "").includes("教练")) {
-      coach = lines[cursor];
+    while ((lines[cursor] || "").includes("教练")) {
+      coaches.push(lines[cursor]);
       cursor += 1;
     }
   } else if (lines[cursor] === "比赛日") {
@@ -167,7 +167,7 @@ function finalizeSwimmingEntry(current) {
 
   current.time = time;
   current.session = session;
-  current.coach = coach;
+  current.coaches = coaches;
   current.competition = competition;
   current.competitionName = competitionName;
   current.pool = pool;
@@ -255,7 +255,7 @@ function renderSwimmingMeta(entry) {
     `;
   }
 
-  const rows = [entry.time, entry.session, entry.coach]
+  const rows = [entry.time, entry.session, ...entry.coaches]
     .filter(Boolean)
     .map((row) => `<p>${escapeHtml(row)}</p>`)
     .join("");

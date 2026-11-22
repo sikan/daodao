@@ -118,6 +118,7 @@
   --muted: rgba(50, 38, 26, 0.68);
   --reading-ink: rgba(50, 38, 26, 0.68);
   --reading-muted: rgba(50, 38, 26, 0.48);
+  --swim-set-ink: rgba(50, 38, 26, 0.82);
   --outside: #e9e6e1;
   --paper: #f3efe8;
   --panel-light: #f3efe8;
@@ -525,7 +526,7 @@ body {
 }
 
 .entry__body .swim-line--set {
-  color: var(--ink);
+  color: var(--swim-set-ink);
   font-weight: var(--reading-font-weight);
 }
 
@@ -534,7 +535,7 @@ body {
   grid-template-columns: 1rem minmax(0, 1fr);
   column-gap: 0.15rem;
   align-items: start;
-  color: var(--ink);
+  color: var(--swim-set-ink);
 }
 
 .entry__body .swim-line--structure p,
