@@ -75,6 +75,14 @@ font, closing the corresponding gaps in its legacy Noto Serif 300 face. The
 mathematical minus is intentionally absent: it is already covered by both
 Daodao Garamond and the legacy Noto Serif 300 face.
 
+The swimming-record structure marker is a deliberate local exception to the
+general reading stack. Its isolated `└` span explicitly prefers the locally
+installed Georgia face for the reviewed shape, then falls back directly to
+Daodao Serif Supplement. U+2514 remains in this self-hosted supplement and in
+the coverage manifest so platforms without Georgia still render the marker
+without an unplanned system fallback. This exception does not affect the
+surrounding training text or any other symbol.
+
 The supplement uses the internal family name `Daodao Serif Supplement` and
 PostScript name `DaodaoSerifSupplement-Light`. It is covered by `OFL.txt`.
 

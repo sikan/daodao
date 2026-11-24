@@ -827,6 +827,8 @@ iming-garamond 是默认排版方案：
 • 中文文字使用由 I.MingCP 派生的 Daodao Ming。
 • Daodao Serif Supplement 补齐前两者未覆盖的明确符号缺口。
 
+游泳记录结构标记 `└` 是明确记录的局部例外：其独立标记元素在 CSS 中优先使用系统 Georgia，以保留已经确认的转角形态；没有 Georgia 时直接使用 Daodao Serif Supplement。不得因此从补充字体、清单或构建覆盖中删除 U+2514，也不得把这一有意声明的局部字体选择误报为未计划回退。该规则只适用于 `└` 标记本身，不得改变其后训练文字或其他符号的字体。
+
 noto-system 是备用排版方案：
 
 • 拉丁文字使用仓库已有的 Noto Serif；

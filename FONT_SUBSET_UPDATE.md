@@ -72,6 +72,9 @@ both of them:
 The current deliberate coverage additions are documented in
 `assets/fonts/README.md`: Daodao Garamond adds `π`, `→`, and `−`, while the
 supplement contains exactly `ǐ`, `π`, `→`, `⇌`, and `└`.
+The isolated swimming-record `└` marker deliberately prefers local Georgia for
+its reviewed shape and uses the supplement as its guaranteed fallback; U+2514
+must therefore remain in the supplement and coverage manifest.
 
 The `redacted` and `raw` build modes control which diary and swimming-record
 text is published; they are separate from these two typography strategies.

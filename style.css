@@ -555,6 +555,7 @@ body {
 
 .entry__body .swim-line--structure .swim-line__mark {
   color: var(--reading-muted);
+  font-family: Georgia, "Daodao Serif Supplement", serif;
 }
 
 .entry__body .swim-line--annotation {
